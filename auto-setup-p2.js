@@ -1,55 +1,13 @@
 // auto-setup-p2.js
 // Handles the Player 2 setup phase of the auto-setup process.
-// Includes logic to refresh P2 view if initial element finding fails.
+// Assumes sufficient delay occurred after P1 setup for lobby readiness.
 
 const {
   safeExecuteJavaScript,
   delay,
   findAndClickElementByText,
+  DELAYS, // Import simplified delay constants
 } = require("./auto-setup-utils");
-
-/**
- * Helper function to wait for a view to finish loading after a reload.
- * @param {BrowserView} view - The view to monitor.
- * @returns {Promise<void>} - Promise resolving when 'did-finish-load' fires.
- * @throws {Error} If 'did-fail-load' fires or view is destroyed.
- */
-function waitForLoad(view) {
-  return new Promise((resolve, reject) => {
-    if (!view || !view.webContents || view.webContents.isDestroyed()) {
-      return reject(new Error("View unavailable for waitForLoad."));
-    }
-    let successHandler, failHandler;
-
-    const cleanupListeners = () => {
-      if (successHandler)
-        view.webContents.removeListener("did-finish-load", successHandler);
-      if (failHandler)
-        view.webContents.removeListener("did-fail-load", failHandler);
-    };
-
-    failHandler = (evt, code, desc, validatedURL) => {
-      console.error(
-        `View load failed after reload: ${desc} (${code}) URL: ${validatedURL}`
-      );
-      cleanupListeners();
-      reject(new Error(`View load failed after reload: ${desc} (${code})`));
-    };
-    successHandler = () => {
-      if (!view || view.webContents.isDestroyed()) {
-        console.warn("View destroyed after reload finished.");
-        cleanupListeners();
-        reject(new Error("View destroyed after reload finished"));
-        return;
-      }
-      console.log("View finished loading after reload.");
-      cleanupListeners();
-      resolve();
-    };
-    view.webContents.once("did-finish-load", successHandler);
-    view.webContents.once("did-fail-load", failHandler);
-  });
-}
 
 /**
  * Executes the setup steps for Player 2.
@@ -57,19 +15,18 @@ function waitForLoad(view) {
  * @param {string} inviteLink - The lobby invite link obtained from P1 setup.
  * @param {string} p2Url - The deck URL for Player 2.
  * @returns {Promise<void>} - Promise resolving when P2 setup is complete.
- * @throws {Error} If any step fails, including the retry after refresh.
+ * @throws {Error} If any step fails.
  */
 async function setupPlayer2(appContext, inviteLink, p2Url) {
   const { view2, mainWindow, setCurrentView, resizeView } = appContext;
-  const initialElementFindTimeout = 3000; // Shorter timeout for the first attempt
-  const retryElementFindTimeout = 7000; // Original timeout for the retry
+  const elementFindTimeout = 7000; // Standard timeout for finding elements
 
   console.log("--- Starting Player 2 Setup Phase ---");
 
   // Step 7: Load P2 into lobby
   console.log("P2 Setup Step 1 (Overall Step 7): Loading P2 into lobby");
   const p2LoadPromise = new Promise((resolve, reject) => {
-    // ... (promise logic remains the same as previous version) ...
+    // ... (promise logic remains the same) ...
     if (!view2 || !view2.webContents || view2.webContents.isDestroyed()) {
       return reject(new Error("V2 unavailable loading lobby."));
     }
@@ -110,9 +67,9 @@ async function setupPlayer2(appContext, inviteLink, p2Url) {
 
   // Add delay for page settlement
   console.log(
-    "P2 Setup: Adding delay (1000ms) for page settlement after initial load..."
+    `P2 Setup: Adding delay (${DELAYS.MEDIUM}ms) for page settlement after initial load...`
   );
-  await delay(1000);
+  await delay(DELAYS.MEDIUM); // Use MEDIUM
 
   // Switch view to P2
   console.log("P2 Setup Step 2 (Overall Step 7 cont.): Switching to View 2");
@@ -121,89 +78,25 @@ async function setupPlayer2(appContext, inviteLink, p2Url) {
     mainWindow.setBrowserView(view2);
     resizeView(view2);
   }
-  await delay(700); // Delay related to view switching
+  await delay(DELAYS.MEDIUM); // Use MEDIUM
 
-  // Step 8: Click "Import New Deck" - with refresh logic
-  console.log(
-    'P2 Setup Step 3 (Overall Step 8): Attempting to click "Import New Deck"'
+  // Step 8: Click "Import New Deck" (Single attempt)
+  console.log('P2 Setup Step 3 (Overall Step 8): Clicking "Import New Deck"');
+  await findAndClickElementByText(
+    appContext,
+    view2,
+    "Import New Deck",
+    "Click Import New Deck P2",
+    "p, button",
+    elementFindTimeout // Use standard timeout
   );
-  try {
-    // First attempt with shorter timeout
-    await findAndClickElementByText(
-      appContext,
-      view2,
-      "Import New Deck",
-      "Click Import New Deck P2 (Attempt 1)",
-      "p, button",
-      initialElementFindTimeout
-    );
-    console.log("Successfully clicked 'Import New Deck' on first attempt.");
-  } catch (error) {
-    // Check if the error is specifically a timeout error from findAndClickElementByText
-    // (We assume the timeout error message includes "Timed out")
-    if (error.message && error.message.includes("Timed out")) {
-      console.warn(
-        `'Import New Deck' not found within ${initialElementFindTimeout}ms. Attempting refresh...`
-      );
-
-      // --- Refresh Logic ---
-      try {
-        if (!view2 || !view2.webContents || view2.webContents.isDestroyed()) {
-          throw new Error("View 2 unavailable for refresh.");
-        }
-        console.log("Reloading View 2...");
-        view2.webContents.reload(); // Trigger reload
-
-        // Wait for the reload to complete
-        await waitForLoad(view2);
-
-        // Add delay after refresh settlement
-        console.log(
-          "P2 Setup: Adding delay (1500ms) for page settlement after refresh..."
-        );
-        await delay(1500);
-
-        // Retry finding and clicking the element with the original timeout
-        console.log(
-          'P2 Setup: Retrying click "Import New Deck" after refresh...'
-        );
-        await findAndClickElementByText(
-          appContext,
-          view2,
-          "Import New Deck",
-          "Click Import New Deck P2 (Attempt 2 after Refresh)",
-          "p, button",
-          retryElementFindTimeout
-        );
-        console.log(
-          "Successfully clicked 'Import New Deck' on second attempt after refresh."
-        );
-      } catch (refreshError) {
-        console.error("Error during refresh or second attempt:", refreshError);
-        // If the refresh or the second attempt fails, re-throw the error to fail the setup
-        throw new Error(
-          `Failed to find/click 'Import New Deck' even after refresh: ${refreshError.message}`
-        );
-      }
-      // --- End Refresh Logic ---
-    } else {
-      // If the error wasn't a timeout, re-throw it immediately
-      console.error(
-        "Non-timeout error during first attempt to click 'Import New Deck':",
-        error
-      );
-      throw error;
-    }
-  }
-  // If we get here, the button was clicked successfully (either first or second attempt)
-  await delay(600); // Continue with delay after successful click
+  await delay(DELAYS.MEDIUM); // Use MEDIUM after click
 
   // Step 9: Wait for P2 deck input box
   console.log(
     "P2 Setup Step 4 (Overall Step 9): Waiting for P2 deck input box..."
   );
   await new Promise((resolve, reject) => {
-    // ... (promise logic remains the same as previous version) ...
     let attempts = 0;
     const maxAttempts = 60; // ~9 seconds
     const interval = setInterval(async () => {
@@ -234,14 +127,13 @@ async function setupPlayer2(appContext, inviteLink, p2Url) {
           `Temp error checking P2 input (Attempt ${attempts}): ${err.message}`
         );
         if (attempts >= maxAttempts - 5) {
-          // Avoid infinite loop
           clearInterval(interval);
           reject(new Error(`Failed check P2 input: ${err.message}`));
         }
       }
-    }, 150);
+    }, DELAYS.POLL); // Use POLL constant
   });
-  await delay(300);
+  await delay(DELAYS.SHORT); // Use SHORT
 
   // Step 10: Fill P2 deck input
   console.log("P2 Setup Step 5 (Overall Step 10): Filling P2 deck input");
@@ -255,7 +147,7 @@ async function setupPlayer2(appContext, inviteLink, p2Url) {
     )}); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); console.log('P2 deck URL set on retry.'); return true; } else { console.error('P2 empty input (no placeholder) not found'); throw new Error('P2 empty input (no placeholder) not found'); } } })(); `,
     "Fill P2 Deck Input (No Placeholder)"
   );
-  await delay(500);
+  await delay(DELAYS.MEDIUM); // Use MEDIUM
 
   // Step 11: Click "Import Deck" button
   console.log(
@@ -267,9 +159,9 @@ async function setupPlayer2(appContext, inviteLink, p2Url) {
     "Import Deck",
     "Click Import Deck Button P2",
     "button",
-    6000
+    elementFindTimeout
   );
-  await delay(1200);
+  await delay(DELAYS.LONG); // Use LONG
 
   // Step 12: Click "Ready" button
   console.log('P2 Setup Step 7 (Overall Step 12): Clicking "Ready" button');
@@ -278,9 +170,10 @@ async function setupPlayer2(appContext, inviteLink, p2Url) {
     view2,
     "Ready",
     "Click Ready Button P2",
-    "button"
+    "button",
+    elementFindTimeout
   );
-  await delay(500);
+  await delay(DELAYS.MEDIUM); // Use MEDIUM
 
   console.log("--- Player 2 Setup Phase Complete ---");
 }

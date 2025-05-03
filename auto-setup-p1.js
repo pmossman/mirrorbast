@@ -5,6 +5,7 @@ const {
   safeExecuteJavaScript,
   delay,
   findAndClickElementByText,
+  DELAYS, // Import simplified delay constants
 } = require("./auto-setup-utils");
 
 /**
@@ -24,7 +25,7 @@ async function setupPlayer1(appContext, p1Url) {
   const p1CurrentUrl = view1.webContents.getURL();
   if (!p1CurrentUrl || !p1CurrentUrl.startsWith("https://karabast.net/")) {
     await view1.webContents.loadURL("https://karabast.net");
-    await delay(500);
+    await delay(DELAYS.MEDIUM); // Use MEDIUM for load settle
   } else {
     console.log("P1 already at karabast.net.");
   }
@@ -39,7 +40,7 @@ async function setupPlayer1(appContext, p1Url) {
     "button",
     7000
   );
-  await delay(300);
+  await delay(DELAYS.MEDIUM); // Use MEDIUM
 
   // Step 3: Select "Private" radio button
   console.log('P1 Setup Step 3: Selecting "Private"');
@@ -49,7 +50,7 @@ async function setupPlayer1(appContext, p1Url) {
     ` Array.from(document.querySelectorAll('input[type=radio]')).find(r => r.value === 'Private')?.click(); true; `,
     "Select Private Radio"
   );
-  await delay(300);
+  await delay(DELAYS.SHORT); // Use SHORT
 
   // Step 4: Fill P1 deck input
   console.log("P1 Setup Step 4: Filling P1 deck input");
@@ -61,7 +62,7 @@ async function setupPlayer1(appContext, p1Url) {
     )}); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); true; } else { throw new Error('Visible P1 deck input not found'); } `,
     "Fill P1 Deck Input"
   );
-  await delay(300);
+  await delay(DELAYS.SHORT); // Use SHORT
 
   // Step 5: Click "Create Game"
   console.log('P1 Setup Step 5: Clicking "Create Game"');
@@ -72,13 +73,13 @@ async function setupPlayer1(appContext, p1Url) {
     "Click Create Game P1",
     "button"
   );
-  await delay(300);
+  await delay(DELAYS.MEDIUM); // Use MEDIUM
 
   // Step 6: Wait for and extract invite link
   console.log("P1 Setup Step 6: Waiting for invite link input...");
   const inviteLink = await new Promise((resolve, reject) => {
     let attempts = 0;
-    const maxAttempts = 30;
+    const maxAttempts = 100; // ~15 seconds
     const interval = setInterval(async () => {
       if (attempts++ >= maxAttempts) {
         clearInterval(interval);
@@ -107,19 +108,24 @@ async function setupPlayer1(appContext, p1Url) {
           `Temp error checking link (Attempt ${attempts}): ${err.message}`
         );
         if (attempts >= maxAttempts - 5) {
-          // Avoid infinite loop on persistent errors
           clearInterval(interval);
           reject(new Error(`Failed check link: ${err.message}`));
         }
       }
-    }, 500);
+    }, DELAYS.POLL); // Use POLL constant for interval
   });
 
   if (!inviteLink) throw new Error("Invite link could not be extracted");
   clipboard.writeText(inviteLink);
-  await delay(300);
+
+  // *** NEW: Add delay for backend lobby preparation ***
+  console.log(
+    `P1 Setup: Adding delay (${DELAYS.LONG}ms) for backend lobby preparation...`
+  );
+  await delay(DELAYS.LONG);
+
   console.log("--- Player 1 Setup Phase Complete ---");
-  return inviteLink; // Return the link for the next phase
+  return inviteLink;
 }
 
 module.exports = { setupPlayer1 };

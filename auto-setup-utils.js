@@ -1,6 +1,14 @@
 // auto-setup-utils.js
 // Contains utility functions shared across the auto-setup process.
 
+// --- Simplified Delay Constants (in milliseconds) ---
+const DELAYS = {
+  SHORT: 100, // For quick actions or brief pauses between checks
+  MEDIUM: 500, // For standard waits after clicks, view switches, or initial load settling
+  LONG: 2000, // For potentially slower operations like imports or settling after refresh
+  POLL: 150, // Interval for polling loops and internal waits
+};
+
 /**
  * Helper function for executing JavaScript safely within a BrowserView's webContents.
  * @param {object} appContext - The application context (must include view1, view2).
@@ -27,7 +35,6 @@ const safeExecuteJavaScript = async (appContext, view, script, description) => {
   }
   try {
     // console.log(`Executing JS in View ${viewNum} (${description}): ${script.substring(0, 100)}...`);
-    // Setting userGesture to true can help bypass certain restrictions
     const result = await view.webContents.executeJavaScript(script, true);
     // console.log(`JS Execution Result (${description}): ${result}`);
     return result;
@@ -35,7 +42,6 @@ const safeExecuteJavaScript = async (appContext, view, script, description) => {
     console.error(
       `Error executing JavaScript in View ${viewNum} (${description}): ${error.message}`
     );
-    // Rethrow with more context including the description
     throw new Error(
       `JS execution failed in View ${viewNum} (${description}): ${error.message}`
     );
@@ -73,39 +79,37 @@ const findAndClickElementByText = async (
 
   while (Date.now() - startTime < timeout) {
     try {
-      // Pass appContext down to safeExecuteJavaScript
       const clicked = await safeExecuteJavaScript(
-        appContext, // Pass context
+        appContext,
         view,
         `
-                (async () => { // Wrap in async IIAFE to allow await inside
-                    const elements = Array.from(document.querySelectorAll('${selector}'));
-                    // Find visible, enabled element with matching text
-                    const targetElement = elements.find(el =>
-                        el.textContent.trim().toLowerCase() === '${lowerElementText}' &&
-                        el.offsetParent !== null && // Basic visibility check
-                        !el.disabled              // Check if enabled (relevant for buttons/inputs)
-                    );
-                    if (targetElement) {
-                        console.log('Found element:', targetElement.tagName, targetElement.textContent);
-                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-                        await new Promise(r => setTimeout(r, 150)); // Brief wait
-                        console.log('Clicking element:', targetElement.tagName, targetElement.textContent);
-                        targetElement.click();
-                        return true; // Indicate success
-                    }
-                    return false; // Element not found or not ready
-                })();
-            `,
+              (async () => { // Wrap in async IIAFE to allow await inside
+                  const elements = Array.from(document.querySelectorAll('${selector}'));
+                  const targetElement = elements.find(el =>
+                      el.textContent.trim().toLowerCase() === '${lowerElementText}' &&
+                      el.offsetParent !== null &&
+                      !el.disabled
+                  );
+                  if (targetElement) {
+                      console.log('Found element:', targetElement.tagName, targetElement.textContent);
+                      targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+                      // Use POLL delay for the brief wait inside JS execution
+                      await new Promise(r => setTimeout(r, ${DELAYS.POLL}));
+                      console.log('Clicking element:', targetElement.tagName, targetElement.textContent);
+                      targetElement.click();
+                      return true;
+                  }
+                  return false;
+              })();
+          `,
         stepDescription
       );
 
       if (clicked) {
         console.log(`Successfully clicked "${elementText}" element.`);
-        return; // Exit loop on success
+        return;
       }
     } catch (error) {
-      // Ignore errors during polling unless it's persistent and close to timeout
       if (Date.now() - startTime < timeout - 500) {
         console.warn(
           `Temporary error trying to click "${elementText}" (will retry): ${error.message}`
@@ -114,23 +118,24 @@ const findAndClickElementByText = async (
         console.error(
           `Persistent error trying to click "${elementText}": ${error.message}`
         );
-        // Re-throw the error if it persists near the timeout to ensure the main function catches it
         throw new Error(
           `Persistent error trying to click "${elementText}": ${error.message}`
         );
       }
     }
-    await delay(500); // Wait slightly longer before retrying
+    // Use SHORT delay before retrying find
+    await delay(DELAYS.SHORT);
   }
 
-  // If loop finishes without success
   throw new Error(
     `Timed out waiting for "${elementText}" element (${selector}) in step: ${stepDescription}`
   );
 };
 
+// Export utilities AND the delays object
 module.exports = {
   safeExecuteJavaScript,
   delay,
   findAndClickElementByText,
+  DELAYS, // Export the constants object
 };

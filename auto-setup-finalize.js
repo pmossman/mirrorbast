@@ -1,7 +1,11 @@
 // auto-setup-finalize.js
 // Handles the finalization phase of the auto-setup process.
 
-const { delay, findAndClickElementByText } = require("./auto-setup-utils");
+const {
+  delay,
+  findAndClickElementByText,
+  DELAYS, // Import simplified delay constants
+} = require("./auto-setup-utils");
 
 /**
  * Executes the final steps of the setup process.
@@ -21,7 +25,7 @@ async function finalizeSetup(appContext) {
     mainWindow.setBrowserView(view1);
     resizeView(view1);
   }
-  await delay(2700);
+  await delay(DELAYS.MEDIUM); // Use MEDIUM
 
   // Step 14: Click "Ready" button in P1 View
   console.log(
@@ -34,7 +38,7 @@ async function finalizeSetup(appContext) {
     "Click Ready Button P1",
     "button"
   );
-  await delay(500);
+  await delay(DELAYS.MEDIUM); // Use MEDIUM
 
   // Step 15: Click "Start Game" button in P1 View
   console.log(
@@ -47,7 +51,7 @@ async function finalizeSetup(appContext) {
     "Click Start Game Button P1",
     "button"
   );
-  await delay(1000); // Wait a bit after starting the game
+  await delay(DELAYS.MEDIUM); // Use MEDIUM
 
   // Step 16: Request sidebar collapse
   console.log("Finalize Step 4 (Overall Step 16): Requesting sidebar collapse");
