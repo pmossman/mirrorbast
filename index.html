@@ -1,65 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:; connect-src 'self';">
-  <title>Mirrorbast</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <div id="header">
-    <button id="sidebarToggleBtn" title="Toggle Sidebar">☰</button>
-    <h1>Mirrorbast</h1>
-  </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:; connect-src 'self';"
+    />
+    <title>Mirrorbast</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="header">
+      <button id="sidebarToggleBtn" title="Toggle Sidebar">☰</button>
+      <h1>Mirrorbast</h1>
+    </div>
 
-  <div id="container">
-    <aside id="sidebar">
-      <div id="mainSidebarContent">
-        <div id="sidebarContentScrollable">
-          <h2>Setup & Gameplay</h2>
-          <label for="p1Select">Player 1 Deck:</label>
-          <select id="p1Select"></select>
-          <div class="quick-add">
-            <input id="p1UrlInput" type="text" placeholder="Paste URL to Add & Select" />
-            <button id="p1AddSelectBtn" class="generic small-btn icon-btn" title="Add URL to saved decks and select it for Player 1">+</button>
+    <div id="container">
+      <aside id="sidebar">
+        <div id="mainSidebarContent">
+          <div id="sidebarContentScrollable">
+            <h2>Setup & Gameplay</h2>
+            <label for="p1Select">Player 1 Deck:</label>
+            <select id="p1Select"></select>
+            <div class="quick-add">
+              <input
+                id="p1UrlInput"
+                type="text"
+                placeholder="Paste URL to Add & Select"
+              />
+              <button
+                id="p1AddSelectBtn"
+                class="generic small-btn icon-btn"
+                title="Add URL to saved decks and select it for Player 1"
+              >
+                +
+              </button>
+            </div>
+            <label for="p2Select">Player 2 Deck:</label>
+            <select id="p2Select"></select>
+            <div class="quick-add">
+              <input
+                id="p2UrlInput"
+                type="text"
+                placeholder="Paste URL to Add & Select"
+              />
+              <button
+                id="p2AddSelectBtn"
+                class="generic small-btn icon-btn"
+                title="Add URL to saved decks and select it for Player 2"
+              >
+                +
+              </button>
+            </div>
+            <button id="autoSetupBtn" class="generic primary-action">
+              Auto Setup Game
+            </button>
+            <button id="manageDecksBtn" class="generic secondary-action">
+              Manage Decks
+            </button>
           </div>
-          <label for="p2Select">Player 2 Deck:</label>
-          <select id="p2Select"></select>
-          <div class="quick-add">
-            <input id="p2UrlInput" type="text" placeholder="Paste URL to Add & Select" />
-            <button id="p2AddSelectBtn" class="generic small-btn icon-btn" title="Add URL to saved decks and select it for Player 2">+</button>
-          </div>
-          <button id="autoSetupBtn" class="generic primary-action">Auto Setup Game</button>
-          <button id="manageDecksBtn" class="generic secondary-action">Manage Decks</button>
+          <button
+            id="resetBtn"
+            title="Reloads both player views to Karabast home"
+          >
+            Reset
+          </button>
         </div>
-        <button id="resetBtn" title="Reloads both player views to Karabast home">Reset</button>
-      </div>
 
-      <div id="deckManagementView" style="display: none;">
-         <div id="deckManagementContentScrollable">
+        <div id="deckManagementView" style="display: none">
+          <div id="deckManagementContentScrollable">
             <h2>Manage Saved Decks</h2>
             <div id="deckManager" class="card">
-              <input id="deckInput" type="text" placeholder="Paste new deck URL" />
+              <input
+                id="deckInput"
+                type="text"
+                placeholder="Paste new deck URL"
+              />
               <button id="addDeckBtn" class="generic">Add Deck</button>
             </div>
             <h3>Saved Decks</h3>
-            <ul id="deckList">
-              </ul>
-         </div>
-         <button id="backToSetupBtn" class="generic">Back to Setup</button>
-      </div>
-    </aside>
+            <ul id="deckList"></ul>
+          </div>
+          <button id="backToSetupBtn" class="generic">Back to Setup</button>
+        </div>
+      </aside>
 
-    <div id="content">
-      </div>
-  </div>
+      <div id="content"></div>
+    </div>
 
-  <footer id="footer">
-      <button id="switchBtn" class="generic">Switch Active Player (Spacebar)</button>
-  </footer>
+    <footer id="footer">
+      <button id="switchBtn" class="generic">
+        Switch Active Player (Spacebar)
+      </button>
+    </footer>
 
-  <script defer src="renderer.js"></script>
-</body>
+    <script defer src="renderer.js"></script>
+  </body>
 </html>

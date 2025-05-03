@@ -1,33 +1,44 @@
 // preload.js
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer } = require("electron");
 
-contextBridge.exposeInMainWorld('api', {
+contextBridge.exposeInMainWorld("api", {
   // Invoke
-  readClipboard: () => ipcRenderer.invoke('read-clipboard'),
-  fetchMetadata: (url) => ipcRenderer.invoke('fetch-metadata', url),
+  readClipboard: () => ipcRenderer.invoke("read-clipboard"),
+  fetchMetadata: (url) => ipcRenderer.invoke("fetch-metadata", url),
 
   // Send
-  switchPlayer: () => ipcRenderer.send('switch-player'),
-  resetApp: () => ipcRenderer.send('reset-phase'),
-  autoSetup: (p1Url, p2Url) => ipcRenderer.send('auto-setup', p1Url, p2Url),
-  sidebarStateChanged: (isCollapsed) => ipcRenderer.send('sidebar-state-change', isCollapsed),
+  switchPlayer: () => ipcRenderer.send("switch-player"),
+  resetApp: () => ipcRenderer.send("reset-phase"),
+  autoSetup: (p1Url, p2Url) => ipcRenderer.send("auto-setup", p1Url, p2Url),
+  sidebarStateChanged: (isCollapsed) =>
+    ipcRenderer.send("sidebar-state-change", isCollapsed),
   // *** NEW: Control BrowserView visibility ***
-  setGameViewsVisibility: (visible) => ipcRenderer.send('set-game-views-visibility', visible),
+  setGameViewsVisibility: (visible) =>
+    ipcRenderer.send("set-game-views-visibility", visible),
 
   // On
-  onLobbySuccess: (callback) => ipcRenderer.on('lobby-success', (event, ...args) => callback(...args)),
-  onResetSuccess: (callback) => ipcRenderer.on('reset-success', (event, ...args) => callback(...args)),
-  onResetError: (callback) => ipcRenderer.on('reset-error', (event, ...args) => callback(...args)),
-  onAutoSetupError: (callback) => ipcRenderer.on('auto-setup-error', (event, ...args) => callback(...args)),
-  onTriggerSwitch: (callback) => ipcRenderer.on('trigger-switch', (event, ...args) => callback(...args)),
-  onSetSidebarCollapsed: (callback) => ipcRenderer.on('set-sidebar-collapsed', (e, isCollapsed) => callback(isCollapsed)),
-  onCollapseSidebarRequest: (callback) => ipcRenderer.on('collapse-sidebar', (event, ...args) => callback(...args)),
-
+  onLobbySuccess: (callback) =>
+    ipcRenderer.on("lobby-success", (event, ...args) => callback(...args)),
+  onResetSuccess: (callback) =>
+    ipcRenderer.on("reset-success", (event, ...args) => callback(...args)),
+  onResetError: (callback) =>
+    ipcRenderer.on("reset-error", (event, ...args) => callback(...args)),
+  onAutoSetupError: (callback) =>
+    ipcRenderer.on("auto-setup-error", (event, ...args) => callback(...args)),
+  onTriggerSwitch: (callback) =>
+    ipcRenderer.on("trigger-switch", (event, ...args) => callback(...args)),
+  onSetSidebarCollapsed: (callback) =>
+    ipcRenderer.on("set-sidebar-collapsed", (e, isCollapsed) =>
+      callback(isCollapsed)
+    ),
+  onCollapseSidebarRequest: (callback) =>
+    ipcRenderer.on("collapse-sidebar", (event, ...args) => callback(...args)),
 
   // Off
-  removeListener: (channel, callback) => ipcRenderer.removeListener(channel, callback),
+  removeListener: (channel, callback) =>
+    ipcRenderer.removeListener(channel, callback),
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
 });
 
 // Added setGameViewsVisibility
-console.log('Preload script loaded (with setGameViewsVisibility).');
+console.log("Preload script loaded (with setGameViewsVisibility).");
