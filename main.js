@@ -1,28 +1,31 @@
 // main.js
 const { app, BrowserWindow, BrowserView, ipcMain, clipboard, globalShortcut } = require('electron');
 const path = require('path');
-// *** Ensure node-fetch is required correctly ***
-// Make sure you have run: npm install node-fetch@2
-const fetch = require('node-fetch');
+const fetch = require('node-fetch'); // Ensure node-fetch@2 is installed
 
 // Import the auto-setup logic
 const { performAutoSetup } = require('./auto-setup');
 
 // Constants for layout
+const DEFAULT_SIDEBAR_WIDTH = 300;
+const COLLAPSED_SIDEBAR_WIDTH = 0;
 const HEADER_HEIGHT = 60;
-const SIDEBAR_WIDTH = 300;
+const FOOTER_HEIGHT = 50;
 
 // Keep track of the main window and the two browser views
 let mainWindow;
 let view1, view2;
-let currentView = 1; // 1 or 2 // This state is managed here
-let isBrowserViewVisible = true; // Track if BrowserView should be visible
+let currentView = 1; // 1 or 2
+let currentSidebarWidth = DEFAULT_SIDEBAR_WIDTH; // Track current sidebar width
+// *** NEW: Track if game views should be visible ***
+let gameViewsVisible = true;
 
 /**
  * Creates the main application window and sets up BrowserViews.
  */
 function createWindow() {
-  isBrowserViewVisible = true; // Reset on create
+  currentSidebarWidth = DEFAULT_SIDEBAR_WIDTH; // Reset on create
+  gameViewsVisible = true; // Reset on create
 
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -37,12 +40,17 @@ function createWindow() {
   });
 
   mainWindow.on('page-title-updated', (event) => event.preventDefault());
-  mainWindow.setTitle('Karabast Tester');
+  mainWindow.setTitle('Mirrorbast');
   mainWindow.loadFile('index.html');
 
   // Create BrowserViews
   view1 = new BrowserView({ webPreferences: { partition: 'persist:player1', contextIsolation: true, backgroundThrottling: false } });
   view2 = new BrowserView({ webPreferences: { partition: 'persist:player2', contextIsolation: true, backgroundThrottling: false } });
+
+  // Add both views immediately
+  mainWindow.addBrowserView(view1);
+  mainWindow.addBrowserView(view2);
+  mainWindow.setBrowserView(view1); // Set P1 on top
 
   // Load Initial URLs
   console.log("Loading initial URL for View 1...");
@@ -56,10 +64,13 @@ function createWindow() {
     .catch(err => console.error("Error initiating load for View 2:", err));
 
   // Set initial view and resize
-  mainWindow.setBrowserView(view1);
   setTimeout(() => {
       if (mainWindow && view1 && !view1.webContents.isDestroyed()) {
-          resizeView(view1);
+          resizeView(view1); // Resize P1
+          // Resize P2 to its initial position (it will be behind P1)
+          if (view2 && !view2.webContents.isDestroyed()) {
+              resizeView(view2);
+          }
       }
   }, 150);
 
@@ -71,9 +82,11 @@ function createWindow() {
 
   // Window Event Handling
   mainWindow.on('resize', () => {
-      if (isBrowserViewVisible) {
-          resizeView(currentView === 1 ? view1 : view2);
-      }
+      // Always resize both views when window resizes,
+      // their visibility relative to the sidebar collapse is handled by CSS in the renderer.
+      // resizeView will respect the gameViewsVisible flag.
+      resizeView(view1);
+      resizeView(view2);
   });
   mainWindow.on('closed', () => { mainWindow = null; });
 }
@@ -82,11 +95,15 @@ function createWindow() {
 function registerSpaceShortcut() {
      if (!globalShortcut.isRegistered('Space')) {
       const ret = globalShortcut.register('Space', () => {
-        if (isBrowserViewVisible && mainWindow?.webContents && !mainWindow.webContents.isDestroyed()) {
+        // Just check if the window is valid
+        if (mainWindow?.webContents && !mainWindow.webContents.isDestroyed()) {
             console.log("Spacebar pressed, sending trigger-switch");
-            mainWindow.webContents.send('trigger-switch');
-        } else if (!isBrowserViewVisible) {
-            console.log("Spacebar pressed, but ignored (deck management view active).");
+            // *** Check if game views are visible before triggering switch ***
+            if (gameViewsVisible) {
+                mainWindow.webContents.send('trigger-switch');
+            } else {
+                console.log("Spacebar ignored, game views not visible (deck management likely active).");
+            }
         } else {
             console.warn("Spacebar pressed, but mainWindow invalid. Unregistering shortcut.");
             unregisterSpaceShortcut();
@@ -108,17 +125,39 @@ function unregisterSpaceShortcut() {
 
 /** Resizes and positions the given BrowserView within the main window. */
 function resizeView(view) {
-  if (!mainWindow || !view?.webContents || view.webContents.isDestroyed()) { return; }
-  if (!isBrowserViewVisible) {
-    //   console.log("Skipping resize, BrowserView is hidden."); // Reduce noise
+  if (!mainWindow || !view?.webContents || view.webContents.isDestroyed()) {
       return;
   }
+
+  // *** If game views are meant to be hidden, don't resize (they should be at 0x0) ***
+  if (!gameViewsVisible) {
+      // console.log(`Resize skipped for View ${view === view1 ? 1 : 2}: Game views hidden.`);
+      // Ensure they *stay* hidden if they somehow got bounds again
+      try {
+          view.setBounds({ x: 0, y: HEADER_HEIGHT, width: 0, height: 0 });
+      } catch (error) {
+          if (!error.message.includes('destroyed')) { console.error("Error setting hidden bounds:", error); }
+      }
+      return;
+  }
+
   try {
     const [width, height] = mainWindow.getContentSize();
-    const viewWidth = Math.max(1, width - SIDEBAR_WIDTH);
-    const viewHeight = Math.max(1, height - HEADER_HEIGHT);
-    if (viewWidth <= 1 || viewHeight <= 1) { return; }
-    view.setBounds({ x: SIDEBAR_WIDTH, y: HEADER_HEIGHT, width: viewWidth, height: viewHeight });
+    // Calculate bounds based on currentSidebarWidth
+    const viewWidth = Math.max(1, width - currentSidebarWidth);
+    const viewHeight = Math.max(1, height - HEADER_HEIGHT - FOOTER_HEIGHT);
+
+    // If sidebar is collapsed, view takes full width
+    const viewX = currentSidebarWidth <= COLLAPSED_SIDEBAR_WIDTH ? 0 : currentSidebarWidth;
+    const effectiveWidth = currentSidebarWidth <= COLLAPSED_SIDEBAR_WIDTH ? width : viewWidth;
+
+    if (effectiveWidth <= 1 || viewHeight <= 1) {
+        // Don't resize to invalid dimensions, but don't log excessively
+        // console.warn(`Resize skipped: Calculated invalid dimensions ${effectiveWidth}x${viewHeight}`);
+        return;
+    }
+    // console.log(`Resizing View ${view === view1 ? 1 : 2} to: x=${viewX}, y=${HEADER_HEIGHT}, w=${effectiveWidth}, h=${viewHeight} (Sidebar: ${currentSidebarWidth})`);
+    view.setBounds({ x: viewX, y: HEADER_HEIGHT, width: effectiveWidth, height: viewHeight });
   } catch (error) {
     if (!error.message.includes('destroyed')) { console.error("Error resizing view:", error); }
   }
@@ -134,17 +173,12 @@ function setCurrentView(viewNum) {
 
 ipcMain.handle('read-clipboard', () => clipboard.readText());
 
-// *** Ensure fetch is available in this scope ***
 ipcMain.handle('fetch-metadata', async (_, url) => {
   console.log(`Fetching metadata for: ${url}`);
-  // Check if fetch was correctly required
-  if (typeof fetch !== 'function') {
-      console.error("FATAL: fetch function is not available in main process. Is node-fetch installed and required?");
-      return { name: 'Setup Error', author: 'N/A' }; // Indicate a setup problem
-  }
+  if (typeof fetch !== 'function') { console.error("FATAL: fetch not available."); return { name: 'Setup Error', author: 'N/A' }; }
   try {
-    if (!url || !(url.startsWith('http://') || url.startsWith('https://'))) { throw new Error('Invalid URL (must start with http/https)'); }
-    const response = await fetch(`https://karabast.net/api/swudbdeck?deckLink=${encodeURIComponent(url)}`, { method: 'GET', headers: { 'Accept': 'application/json', 'User-Agent': 'KarabastTesterApp/1.0' }, timeout: 15000 });
+    if (!url || !(url.startsWith('http://') || url.startsWith('https://'))) { throw new Error('Invalid URL'); }
+    const response = await fetch(`https://karabast.net/api/swudbdeck?deckLink=${encodeURIComponent(url)}`, { method: 'GET', headers: { 'Accept': 'application/json', 'User-Agent': 'Mirrorbast/1.0' }, timeout: 15000 });
     if (!response.ok) { const errorBody = await response.text().catch(() => ''); console.error(`API Error ${response.status} for ${url}. Body: ${errorBody}`); throw new Error(`API request failed: ${response.status}`); }
     const data = await response.json();
     if (data?.metadata?.name !== undefined) { return { name: data.metadata.name || 'Unnamed', author: data.metadata.author || 'Unknown' }; }
@@ -152,65 +186,73 @@ ipcMain.handle('fetch-metadata', async (_, url) => {
   } catch (error) { console.error(`Fetch metadata error for ${url}:`, error); return { name: error.name || 'Fetch Error', author: 'N/A' }; }
 });
 
-ipcMain.on('join-lobby', (event, url) => {
-  console.log(`Joining lobby (manual): ${url}`);
-  if (!view2 || !view2.webContents || view2.webContents.isDestroyed()) { event.reply('lobby-error', 'P2 view unavailable.'); return; }
-  if (!url || !url.includes('karabast.net/lobby')) { event.reply('lobby-error', 'Invalid lobby URL.'); return; }
-  console.log("Loading lobby URL into View 2...");
-  view2.webContents.loadURL(url)
-    .then(() => {
-      if (!view2 || view2.webContents.isDestroyed()) { console.warn("V2 destroyed during load."); return; }
-      console.log('V2 finished loading lobby URL.');
-      setCurrentView(2);
-      if (mainWindow) {
-          isBrowserViewVisible = true; // Ensure visible
-          mainWindow.setBrowserView(view2);
-          resizeView(view2);
-      }
-      event.reply('lobby-success');
-    })
-    .catch(err => { console.error(`Error loading V2 URL ${url}:`, err); event.reply('lobby-error', `Failed load: ${err.message}`); });
-});
-
 ipcMain.on('switch-player', () => {
-  if (!isBrowserViewVisible) { console.log("Switch player ignored (view hidden)."); return; }
-  const nextView = currentView === 1 ? 2 : 1;
-  console.log(`Switching player from ${currentView} to ${nextView}`);
-  const activeView = nextView === 1 ? view1 : view2;
+  // *** Don't switch if views aren't visible ***
+  if (!gameViewsVisible) {
+      console.log("Switch player ignored: Game views not visible.");
+      return;
+  }
+
+  const nextViewNum = currentView === 1 ? 2 : 1;
+  console.log(`Switching player from ${currentView} to ${nextViewNum}`);
+  const activeView = nextViewNum === 1 ? view1 : view2;
+
   if (mainWindow && activeView?.webContents && !activeView.webContents.isDestroyed()) {
-    setCurrentView(nextView);
-    mainWindow.setBrowserView(activeView);
+    setCurrentView(nextViewNum);
+    mainWindow.setBrowserView(activeView); // Bring the new active view to the front
+    // Resize according to current sidebar state (resizeView respects gameViewsVisible)
     resizeView(activeView);
-  } else { console.error(`Cannot switch player: View ${nextView} invalid.`); }
+    // Also resize the *inactive* view so it's correct if switched back to later
+    resizeView(nextViewNum === 1 ? view2 : view1);
+  } else { console.error(`Cannot switch player: View ${nextViewNum} invalid.`); }
 });
 
 ipcMain.on('reset-phase', (event) => {
   console.log('Resetting application views...');
+  // *** Ensure views are visible before reloading ***
+  if (!gameViewsVisible) {
+      console.log("Making game views visible before reset.");
+      gameViewsVisible = true;
+      // Resize immediately (needed if reset fails early)
+      resizeView(view1);
+      resizeView(view2);
+      if (mainWindow && currentView === 1 && view1) mainWindow.setBrowserView(view1);
+      else if (mainWindow && currentView === 2 && view2) mainWindow.setBrowserView(view2);
+  }
+
   let view1Loaded = false, view2Loaded = false, errors = [];
   const checkCompletion = () => {
       if (!view1Loaded || !view2Loaded) return;
       if (errors.length === 0) {
           console.log("Views reloaded."); setCurrentView(1);
           if (mainWindow) {
-              isBrowserViewVisible = true; // Ensure visible
-              mainWindow.setBrowserView(view1);
-              resizeView(view1);
+              currentSidebarWidth = DEFAULT_SIDEBAR_WIDTH; // Ensure expanded
+              gameViewsVisible = true; // Ensure visible state is correct
+              mainWindow.setBrowserView(view1); // Ensures P1 is on top
+              resizeView(view1); // Resize P1
+              resizeView(view2); // Resize P2 (it will be behind P1)
+              if (mainWindow?.webContents && !mainWindow.webContents.isDestroyed()) {
+                  mainWindow.webContents.send('set-sidebar-collapsed', false); // Tell renderer to expand
+              }
           }
           event.reply('reset-success');
       } else {
           console.error("Reset error:", errors.join('; '));
+          // Attempt to recover with P1 if possible
           if (mainWindow && view1?.webContents && !view1.webContents.isDestroyed() && !errors.some(e => e.includes("V1"))) {
               console.log("Setting V1 active despite reset errors."); setCurrentView(1);
-              isBrowserViewVisible = true;
-              mainWindow.setBrowserView(view1); resizeView(view1);
+              currentSidebarWidth = DEFAULT_SIDEBAR_WIDTH;
+              gameViewsVisible = true; // Ensure visible
+              mainWindow.setBrowserView(view1); resizeView(view1); resizeView(view2);
+              if (mainWindow?.webContents && !mainWindow.webContents.isDestroyed()) {
+                  mainWindow.webContents.send('set-sidebar-collapsed', false);
+              }
           }
           event.reply('reset-error', `Failed reload: ${errors.join('; ')}`);
       }
   };
-  // Reload V1
   if (view1?.webContents && !view1.webContents.isDestroyed()) { view1.webContents.loadURL('https://karabast.net').then(() => { view1Loaded = true; }).catch(err => { errors.push("V1:"+err.message); view1Loaded = true; }).finally(checkCompletion); }
   else { errors.push("V1 unavailable"); view1Loaded = true; checkCompletion(); }
-  // Reload V2
   if (view2?.webContents && !view2.webContents.isDestroyed()) { view2.webContents.loadURL('https://karabast.net').then(() => { view2Loaded = true; }).catch(err => { errors.push("V2:"+err.message); view2Loaded = true; }).finally(checkCompletion); }
   else { errors.push("V2 unavailable"); view2Loaded = true; checkCompletion(); }
 });
@@ -218,39 +260,80 @@ ipcMain.on('reset-phase', (event) => {
 // --- Auto Setup Handler ---
 ipcMain.on('auto-setup', async (event, p1Url, p2Url) => {
     console.log("Received 'auto-setup' request.");
-    if (currentView !== 1 || !isBrowserViewVisible) {
-        console.log("Switching to View 1 and ensuring visibility before auto-setup.");
+
+    // *** Ensure views are visible before setup ***
+    if (!gameViewsVisible) {
+        console.log("Making game views visible before auto-setup.");
+        gameViewsVisible = true;
+        // Resize immediately and set active view
+        resizeView(view1);
+        resizeView(view2);
+        if (mainWindow && view1) mainWindow.setBrowserView(view1); // Start with P1
+        setCurrentView(1);
+        await new Promise(r => setTimeout(r, 100)); // Short delay for resize
+    }
+
+    // Ensure sidebar is expanded and P1 is active
+    if (currentView !== 1 || currentSidebarWidth <= COLLAPSED_SIDEBAR_WIDTH) {
+        console.log("Ensuring View 1 active and sidebar expanded before auto-setup.");
         const targetView = view1;
          if (mainWindow && targetView?.webContents && !targetView.webContents.isDestroyed()) {
             setCurrentView(1);
-            if (!isBrowserViewVisible) { mainWindow.addBrowserView(targetView); isBrowserViewVisible = true; }
-            else { mainWindow.setBrowserView(targetView); }
-            resizeView(targetView);
+            currentSidebarWidth = DEFAULT_SIDEBAR_WIDTH;
+            mainWindow.setBrowserView(targetView);
+            resizeView(targetView); // Resize P1 (respects gameViewsVisible)
+            resizeView(view2); // Resize P2 as well
+            mainWindow.webContents.send('set-sidebar-collapsed', false); // Tell renderer to expand UI
             await new Promise(r => setTimeout(r, 300));
-        } else { event.reply('auto-setup-error', 'Cannot switch to P1 view.'); return; }
-    } else { console.log("Already on View 1 and visible."); }
+        } else { event.reply('auto-setup-error', 'Cannot switch/show P1 view.'); return; }
+    } else { console.log("View 1 ready for auto-setup."); }
+
     const appContext = { view1, view2, mainWindow, clipboard, setCurrentView, resizeView, getCurrentView: () => currentView };
     performAutoSetup(event, p1Url, p2Url, appContext);
 });
 
-// --- BrowserView Visibility Handlers ---
-ipcMain.on('hide-browser-view', (event) => {
-    const activeView = currentView === 1 ? view1 : view2;
-    if (mainWindow && activeView) {
-        console.log(`Hiding BrowserView ${currentView}`);
-        mainWindow.removeBrowserView(activeView);
-        isBrowserViewVisible = false;
-    } else { console.warn("Could not hide BrowserView."); }
+// --- Sidebar State Handler ---
+ipcMain.on('sidebar-state-change', (event, isCollapsed) => {
+    console.log(`Renderer reported sidebar collapsed: ${isCollapsed}`);
+    currentSidebarWidth = isCollapsed ? COLLAPSED_SIDEBAR_WIDTH : DEFAULT_SIDEBAR_WIDTH;
+    // Resize views - resizeView respects gameViewsVisible flag
+    resizeView(view1);
+    resizeView(view2);
 });
 
-ipcMain.on('show-browser-view', (event) => {
-    const activeView = currentView === 1 ? view1 : view2;
-    if (mainWindow && activeView) {
-        console.log(`Showing BrowserView ${currentView}`);
-        mainWindow.setBrowserView(activeView); // setBrowserView adds if not present
-        isBrowserViewVisible = true;
-        resizeView(activeView);
-    } else { console.warn("Could not show BrowserView."); }
+// *** NEW: Handler to show/hide game views ***
+ipcMain.on('set-game-views-visibility', (event, visible) => {
+    console.log(`Setting game views visibility to: ${visible}`);
+    if (gameViewsVisible === visible) return; // No change
+
+    gameViewsVisible = visible;
+
+    if (visible) {
+        // Make views visible: Resize both based on current sidebar state
+        // and ensure the correct one is on top.
+        console.log("Resizing views to make them visible.");
+        resizeView(view1);
+        resizeView(view2);
+        const activeView = currentView === 1 ? view1 : view2;
+        if (mainWindow && activeView) {
+            mainWindow.setBrowserView(activeView);
+        } else {
+            console.warn("Could not set active view after making visible.");
+        }
+    } else {
+        // Make views hidden: Set bounds to zero for both
+        console.log("Setting view bounds to zero to hide them.");
+        try {
+            if (view1 && !view1.webContents.isDestroyed()) {
+                view1.setBounds({ x: 0, y: HEADER_HEIGHT, width: 0, height: 0 });
+            }
+            if (view2 && !view2.webContents.isDestroyed()) {
+                view2.setBounds({ x: 0, y: HEADER_HEIGHT, width: 0, height: 0 });
+            }
+        } catch (error) {
+            console.error("Error setting zero bounds:", error);
+        }
+    }
 });
 
 
@@ -262,4 +345,13 @@ app.on('window-all-closed', () => { if (process.platform !== 'darwin') { app.qui
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) { createWindow(); } registerSpaceShortcut(); });
 app.on('will-quit', () => { unregisterSpaceShortcut(); });
 app.on('gpu-process-crashed', (event, killed) => console.error(`GPU crash! Killed: ${killed}`));
-app.on('renderer-process-crashed', (event, webContents, killed) => { /* ... error logging ... */ });
+app.on('renderer-process-crashed', (event, webContents, killed) => {
+    console.error(`Renderer crash! URL: ${webContents?.getURL()}, Killed: ${killed}`);
+    const viewId = webContents?.id; let viewName = 'Unknown';
+    if (viewId) {
+        if (view1?.webContents.id === viewId) viewName = 'View 1';
+        else if (view2?.webContents.id === viewId) viewName = 'View 2';
+        else if (mainWindow?.webContents.id === viewId) viewName = 'Main Window';
+    }
+    console.error(`${viewName} renderer crashed.`);
+});

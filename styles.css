@@ -2,327 +2,135 @@
 
 /* Basic Reset & Body Styles */
 body, html {
-  margin: 0;
-  padding: 0;
-  height: 100%;
+  margin: 0; padding: 0; height: 100%;
   font-family: 'Orbitron', sans-serif;
-  background-color: #0d0d0d;
-  color: #FFE81F;
-  overflow: hidden;
-  box-sizing: border-box;
-  /* *** REDUCED base font size slightly *** */
-  font-size: 15px; /* Was implicitly 16px, adjust as needed */
+  background-color: #0d0d0d; color: #FFE81F;
+  overflow: hidden; box-sizing: border-box;
+  font-size: 15px; /* Base font size */
 }
 
-*, *:before, *:after {
-  box-sizing: inherit;
-}
+*, *:before, *:after { box-sizing: inherit; }
 
 /* Header Styles */
 #header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 60px;
-  background-color: #1f1f1f;
-  display: flex;
-  align-items: center;
-  padding: 0 20px;
+  position: fixed; top: 0; left: 0; width: 100%; height: 60px;
+  background-color: #1f1f1f; display: flex; align-items: center;
+  padding: 0 15px; /* Adjusted padding */
   border-bottom: 2px solid #FFE81F;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
-  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7); z-index: 1000;
 }
+#header h1 { margin: 0 0 0 10px; font-size: 1.3em; color: #FFE81F; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); white-space: nowrap; }
+#sidebarToggleBtn { background: none; border: none; color: #FFE81F; font-size: 1.8em; padding: 0 10px; margin: 0; cursor: pointer; line-height: 1; order: -1; width: auto; flex-grow: 0; flex-shrink: 0; align-self: center; }
+#sidebarToggleBtn:hover { background-color: #333; border-radius: 4px; }
 
-#header h1 {
-  margin: 0;
-  font-size: 1.3em; /* Slightly smaller */
-  color: #FFE81F;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+/* *** Define Footer Height *** */
+:root {
+    --footer-height: 50px; /* Adjust as needed */
 }
 
 /* Main Container Layout */
 #container {
-  position: absolute;
-  top: 60px;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
+  position: absolute; top: 60px;
+  /* *** Adjust bottom to make space for footer *** */
+  bottom: var(--footer-height);
+  left: 0; right: 0; display: flex;
 }
 
 /* Sidebar Styles */
 #sidebar {
-  width: 300px;
-  background-color: #1e1e1e;
-  padding: 10px; /* Reduced padding slightly */
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid #333;
-  overflow: hidden;
-  transition: width 0.3s ease-in-out;
-  z-index: 500;
+  width: 300px; background-color: #1e1e1e; padding: 10px;
+  display: flex; flex-direction: column; border-right: 1px solid #333;
+  overflow: hidden; transition: width 0.25s ease-in-out, padding 0.25s ease-in-out;
+  z-index: 500; position: relative;
 }
-
+/* Collapsed Sidebar Styles */
+body.sidebar-collapsed #sidebar { width: 0; padding: 10px 0; border-right: none; overflow: hidden; }
+body.sidebar-collapsed #sidebarContentScrollable, body.sidebar-collapsed #deckManagementContentScrollable { display: none; }
+body.sidebar-collapsed #resetBtn, body.sidebar-collapsed #backToSetupBtn { display: none; }
 /* Styles for the two main views within the sidebar */
-#mainSidebarContent, #deckManagementView {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-    overflow: hidden;
-    height: 100%;
-}
-
+#mainSidebarContent, #deckManagementView { display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; height: 100%; }
 /* Scrollable content area within each sidebar view */
-#sidebarContentScrollable, #deckManagementContentScrollable {
-  overflow-y: auto;
-  flex: 1;
-  padding-right: 8px;
-  margin-bottom: 10px;
-}
-
+#sidebarContentScrollable, #deckManagementContentScrollable { overflow-y: auto; flex: 1; padding-right: 8px; margin-bottom: 10px; }
 /* Styles for when Deck Management View is Active */
-body.deck-view-active #sidebar {
-    width: 100%;
-    border-right: none;
-}
-
-body.deck-view-active #content {
-    display: none;
-}
-
+body.deck-view-active #sidebar { width: 100%; border-right: none; }
+body.deck-view-active #content { display: none; }
 /* Section Headers in Sidebar */
-#sidebar h2, #sidebar h3 {
-    color: #FFE81F;
-    border-bottom: 1px solid #444;
-    padding-bottom: 4px; /* Reduced padding */
-    margin-top: 12px; /* Reduced margin */
-    margin-bottom: 8px; /* Reduced margin */
-    font-size: 1.0em; /* Reduced font size */
-}
-#sidebar h2:first-child, #sidebar h3:first-child {
-    margin-top: 0;
-}
-
-
+#sidebar h2, #sidebar h3 { color: #FFE81F; border-bottom: 1px solid #444; padding-bottom: 4px; margin-top: 12px; margin-bottom: 8px; font-size: 1.0em; }
+#sidebar h2:first-child, #sidebar h3:first-child { margin-top: 0; }
 /* Card Style for Grouping (Used in Deck Management) */
-.card {
-  background-color: #2a2a2a;
-  padding: 10px; /* Reduced padding */
-  margin-bottom: 12px; /* Reduced margin */
-  border-radius: 5px;
-  border: 1px solid #444;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
+.card { background-color: #2a2a2a; padding: 10px; margin-bottom: 12px; border-radius: 5px; border: 1px solid #444; max-width: 600px; margin-left: auto; margin-right: auto; }
 /* Input and Select Styles */
-#deckManager { /* Specific to deck management view */
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
-#deckManager input#deckInput {
-    flex-grow: 1;
-    width: auto;
-    margin-bottom: 0;
-}
-
-#deckManager button#addDeckBtn {
-    flex-grow: 0;
-    flex-shrink: 0;
-    width: auto;
-    padding: 8px 12px;
-    margin-bottom: 0;
-}
-
+#deckManager { display: flex; gap: 8px; align-items: center; }
+#deckManager input#deckInput { flex-grow: 1; width: auto; margin-bottom: 0; }
+#deckManager button#addDeckBtn { flex-grow: 0; flex-shrink: 0; width: auto; padding: 8px 12px; margin-bottom: 0; }
 /* Quick Add section */
-.quick-add {
-    display: flex;
-    gap: 5px; /* Reduced gap */
-    align-items: center;
-    margin-top: -5px;
-    margin-bottom: 12px; /* Reduced margin */
-}
-
-.quick-add input {
-    flex-grow: 1;
-    width: auto;
-    margin-bottom: 0;
-    font-size: 0.8em; /* Reduced font size */
-    padding: 5px 8px; /* Reduced padding */
-}
-
-/* *** UPDATED: Styles for icon button *** */
-.quick-add button.icon-btn {
-    flex-grow: 0;
-    flex-shrink: 0;
-    width: 28px; /* Fixed width for square-ish button */
-    height: 28px; /* Fixed height */
-    margin-bottom: 0;
-    padding: 0; /* Remove padding */
-    font-size: 1.2em; /* Make '+' icon larger */
-    line-height: 26px; /* Center '+' vertically */
-    text-align: center; /* Center '+' horizontally */
-}
-
-
-label {
-    display: block;
-    margin-bottom: 3px; /* Reduced margin */
-    font-size: 0.85em; /* Reduced font size */
-    color: #ccc;
-}
-
-select, input[type="text"], button {
-  /* General styles for all inputs/buttons */
-  width: 100%;
-  padding: 7px 9px; /* Reduced padding */
-  margin-bottom: 8px; /* Reduced margin */
-  border: 1px solid #555;
-  border-radius: 4px;
-  font-size: 0.85em; /* Reduced font size */
-  background-color: #333;
-  color: #eee;
-  font-family: inherit;
-}
-
-input[type="text"]::placeholder {
-    color: #888;
-    opacity: 0.7;
-}
-
+.quick-add { display: flex; gap: 5px; align-items: center; margin-top: -5px; margin-bottom: 12px; }
+.quick-add input { flex-grow: 1; width: auto; margin-bottom: 0; font-size: 0.8em; padding: 5px 8px; }
+.quick-add button.icon-btn { flex-grow: 0; flex-shrink: 0; width: 28px; height: 28px; margin-bottom: 0; padding: 0; font-size: 1.2em; line-height: 26px; text-align: center; }
+label { display: block; margin-bottom: 3px; font-size: 0.85em; color: #ccc; }
+select, input[type="text"], button { width: 100%; padding: 7px 9px; margin-bottom: 8px; border: 1px solid #555; border-radius: 4px; font-size: 0.85em; background-color: #333; color: #eee; font-family: inherit; }
+input[type="text"]::placeholder { color: #888; opacity: 0.7; }
 /* Button Styles */
-button.generic {
-  background-color: #FFE81F;
-  color: #1a1a1a;
-  cursor: pointer;
-  font-weight: bold;
-  border: none;
-  transition: background-color 0.2s ease, transform 0.1s ease;
-  flex-shrink: 0;
-}
-
-button.generic:hover {
-  background-color: #fff352;
-}
-
-button.generic:active {
-  background-color: #e6cf1a;
-  transform: scale(0.98);
-}
-
+button.generic { background-color: #FFE81F; color: #1a1a1a; cursor: pointer; font-weight: bold; border: none; transition: background-color 0.2s ease, transform 0.1s ease; flex-shrink: 0; min-height: 34px; display: flex; align-items: center; justify-content: center; }
+button.generic:hover { background-color: #fff352; }
+button.generic:active { background-color: #e6cf1a; transform: scale(0.98); }
+/* Primary Action Button Style */
+button.primary-action { padding: 10px 12px; font-size: 0.9em; margin-top: 10px; margin-bottom: 15px; }
+/* Secondary Action Button Style */
+button.secondary-action { background-color: #4f4f4f; color: #ddd; font-size: 0.8em; padding: 6px 8px; margin-bottom: 6px; }
+button.secondary-action:hover { background-color: #666; }
+button.secondary-action:active { background-color: #444; transform: scale(0.98); }
 /* Specific Button Styles */
-#resetBtn, #backToSetupBtn {
-  margin-top: auto;
-  cursor: pointer;
-  font-weight: bold;
-  border: none;
-  transition: background-color 0.2s ease, transform 0.1s ease;
-  flex-shrink: 0;
-  max-width: 180px; /* Reduced max width */
-  align-self: center;
-  /* Use general button padding/font-size */
-}
-
-#resetBtn {
-  background-color: #c62828;
-  color: #fff;
-}
+#resetBtn, #backToSetupBtn { margin-top: auto; cursor: pointer; font-weight: bold; border: none; transition: background-color 0.2s ease, transform 0.1s ease; flex-shrink: 0; max-width: 180px; align-self: center; }
+#resetBtn { background-color: #c62828; color: #fff; }
 #resetBtn:hover { background-color: #e53935; }
 #resetBtn:active { background-color: #b71c1c; transform: scale(0.98); }
-
-#backToSetupBtn {
-  background-color: #444;
-  color: #fff;
-}
+#backToSetupBtn { background-color: #444; color: #fff; }
 #backToSetupBtn:hover { background-color: #555; }
 #backToSetupBtn:active { background-color: #333; transform: scale(0.98); }
-
-
-/* Deck List Styles (Now inside Deck Management View) */
-ul#deckList {
-  list-style: none;
-  padding: 0;
-  margin-top: 8px; /* Reduced margin */
-   max-width: 600px;
-   margin-left: auto;
-   margin-right: auto;
-}
-
-ul#deckList li {
-  background-color: #2f2f2f;
-  padding: 6px 8px; /* Reduced padding */
-  margin-bottom: 6px; /* Reduced margin */
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border: 1px solid #4a4a4a;
-  font-size: 0.85em; /* Reduced font size */
-}
-
-ul#deckList li div:first-child {
-    flex-grow: 1;
-    margin-right: 8px; /* Reduced margin */
-    overflow: hidden;
-}
-
-ul#deckList li strong {
-    color: #eee;
-    display: block;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-ul#deckList li .meta {
-  font-size: 0.8em; /* Reduced font size */
-  color: #aaa;
-   white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-ul#deckList li button {
-    width: auto;
-    padding: 3px 6px; /* Reduced padding */
-    font-size: 0.8em; /* Reduced font size */
-    margin-left: 4px; /* Reduced margin */
-    margin-bottom: 0;
-    flex-shrink: 0;
-}
+/* Deck List Styles */
+ul#deckList { list-style: none; padding: 0; margin-top: 8px; max-width: 600px; margin-left: auto; margin-right: auto; }
+ul#deckList li { background-color: #2f2f2f; padding: 6px 8px; margin-bottom: 6px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; border: 1px solid #4a4a4a; font-size: 0.85em; }
+ul#deckList li div:first-child { flex-grow: 1; margin-right: 8px; overflow: hidden; }
+ul#deckList li strong { color: #eee; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+ul#deckList li .meta { font-size: 0.8em; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+ul#deckList li button { width: auto; padding: 3px 6px; font-size: 0.8em; margin-left: 4px; margin-bottom: 0; flex-shrink: 0; }
 
 /* Main Content Area Styles */
-#content {
-  flex: 1;
-  background-color: #000;
-  position: relative;
-  display: block;
+#content { flex: 1; background-color: #000; position: relative; display: block; }
+
+/* *** Footer Styles *** */
+#footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: var(--footer-height); /* Use variable */
+    background-color: #1f1f1f; /* Match header */
+    border-top: 2px solid #FFE81F; /* Match header */
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Center button */
+    padding: 0 15px;
+    z-index: 1000; /* Ensure footer is on top */
 }
 
-/* Scrollbar Styling (Optional, Webkit browsers) */
-#sidebarContentScrollable::-webkit-scrollbar,
-#deckManagementContentScrollable::-webkit-scrollbar {
-  width: 8px;
+#footer button#switchBtn {
+    width: auto; /* Size to content */
+    max-width: 300px; /* Limit width */
+    margin-bottom: 0; /* Remove default margin */
+    padding: 8px 15px; /* Adjust padding */
+    font-size: 0.9em;
+    /* Optional: different styling for footer button */
+    /* background-color: #3a5fcd; */
+    /* color: white; */
 }
+/* #footer button#switchBtn:hover { background-color: #4e74d8; } */
+/* #footer button#switchBtn:active { background-color: #2a4aae; } */
 
-#sidebarContentScrollable::-webkit-scrollbar-track,
-#deckManagementContentScrollable::-webkit-scrollbar-track {
-  background: #1e1e1e;
-  border-radius: 4px;
-}
 
-#sidebarContentScrollable::-webkit-scrollbar-thumb,
-#deckManagementContentScrollable::-webkit-scrollbar-thumb {
-  background-color: #555;
-  border-radius: 4px;
-  border: 2px solid #1e1e1e;
-}
-
-#sidebarContentScrollable::-webkit-scrollbar-thumb:hover,
-#deckManagementContentScrollable::-webkit-scrollbar-thumb:hover {
-  background-color: #777;
-}
+/* Scrollbar Styling */
+#sidebarContentScrollable::-webkit-scrollbar, #deckManagementContentScrollable::-webkit-scrollbar { width: 8px; }
+#sidebarContentScrollable::-webkit-scrollbar-track, #deckManagementContentScrollable::-webkit-scrollbar-track { background: #1e1e1e; border-radius: 4px; }
+#sidebarContentScrollable::-webkit-scrollbar-thumb, #deckManagementContentScrollable::-webkit-scrollbar-thumb { background-color: #555; border-radius: 4px; border: 2px solid #1e1e1e; }
+#sidebarContentScrollable::-webkit-scrollbar-thumb:hover, #deckManagementContentScrollable::-webkit-scrollbar-thumb:hover { background-color: #777; }
