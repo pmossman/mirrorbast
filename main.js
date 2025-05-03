@@ -69,7 +69,7 @@ const PLACEHOLDER_HTML_DATA_URI = `data:text/html;charset=UTF-8,${encodeURICompo
 <body>
     <div class="container">
         <div class="spinner"></div>
-        Waiting for lobby creation...
+        Waiting for Player 1 to finish setup...
     </div>
 </body>
 </html>
