@@ -244,6 +244,12 @@ button.generic:active {
   background-color: #e6cf1a;
   transform: scale(0.98);
 }
+button.generic:disabled {
+  background-color: #555;
+  color: #999;
+  cursor: not-allowed;
+  transform: none;
+}
 /* Primary Action Button Style */
 button.primary-action {
   padding: 10px 12px;
@@ -259,10 +265,10 @@ button.secondary-action {
   padding: 6px 8px;
   margin-bottom: 6px;
 }
-button.secondary-action:hover {
+button.secondary-action:hover:not(:disabled) {
   background-color: #666;
 }
-button.secondary-action:active {
+button.secondary-action:active:not(:disabled) {
   background-color: #444;
   transform: scale(0.98);
 }
@@ -282,10 +288,10 @@ button.secondary-action:active {
   background-color: #c62828;
   color: #fff;
 }
-#resetBtn:hover {
+#resetBtn:hover:not(:disabled) {
   background-color: #e53935;
 }
-#resetBtn:active {
+#resetBtn:active:not(:disabled) {
   background-color: #b71c1c;
   transform: scale(0.98);
 }
@@ -293,10 +299,10 @@ button.secondary-action:active {
   background-color: #444;
   color: #fff;
 }
-#backToSetupBtn:hover {
+#backToSetupBtn:hover:not(:disabled) {
   background-color: #555;
 }
-#backToSetupBtn:active {
+#backToSetupBtn:active:not(:disabled) {
   background-color: #333;
   transform: scale(0.98);
 }
@@ -339,13 +345,34 @@ ul#deckList li .meta {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Deck list button container */
+ul#deckList li .deck-buttons {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+}
 ul#deckList li button {
   width: auto;
   padding: 3px 6px;
   font-size: 0.8em;
-  margin-left: 4px;
+  margin-left: 0; /* Removed margin-left */
   margin-bottom: 0;
   flex-shrink: 0;
+}
+/* Specific Deck List Button Styles */
+ul#deckList li button.delete-btn {
+  background-color: #a04040;
+  color: white;
+}
+ul#deckList li button.delete-btn:hover {
+  background-color: #c05050;
+}
+ul#deckList li button.open-url-btn {
+  background-color: #306090;
+  color: white;
+}
+ul#deckList li button.open-url-btn:hover {
+  background-color: #4075b0;
 }
 
 /* Main Content Area Styles */
@@ -367,9 +394,16 @@ ul#deckList li button {
   border-top: 2px solid #ffe81f; /* Match header */
   display: flex;
   align-items: center;
-  justify-content: center; /* Center button */
+  justify-content: center; /* Center the controls container */
   padding: 0 15px;
   z-index: 1000; /* Ensure footer is on top */
+}
+
+/* Container for footer controls */
+.footer-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px; /* Space between switch button and toggle */
 }
 
 #footer button#switchBtn {
@@ -378,12 +412,43 @@ ul#deckList li button {
   margin-bottom: 0; /* Remove default margin */
   padding: 8px 15px; /* Adjust padding */
   font-size: 0.9em;
-  /* Optional: different styling for footer button */
-  /* background-color: #3a5fcd; */
-  /* color: white; */
 }
-/* #footer button#switchBtn:hover { background-color: #4e74d8; } */
-/* #footer button#switchBtn:active { background-color: #2a4aae; } */
+
+/* Spacebar Toggle Styles */
+.spacebar-toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.spacebar-toggle-container label {
+  margin-bottom: 0; /* Override default label margin */
+  font-size: 0.8em;
+  color: #ccc;
+}
+button.toggle-btn {
+  width: auto; /* Size to content */
+  padding: 5px 10px;
+  font-size: 0.8em;
+  min-height: 28px;
+  margin-bottom: 0; /* Remove default margin */
+}
+/* Style for when toggle is 'enabled' */
+button.toggle-btn.enabled {
+  background-color: #4caf50; /* Green */
+  color: white;
+}
+button.toggle-btn.enabled:hover {
+  background-color: #66bb6a;
+}
+/* Style for when toggle is 'disabled' */
+button.toggle-btn.disabled {
+  background-color: #f44336; /* Red */
+  color: white;
+}
+button.toggle-btn.disabled:hover {
+  background-color: #ef5350;
+}
+
 
 /* Scrollbar Styling */
 #sidebarContentScrollable::-webkit-scrollbar,

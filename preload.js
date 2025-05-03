@@ -12,9 +12,14 @@ contextBridge.exposeInMainWorld("api", {
   autoSetup: (p1Url, p2Url) => ipcRenderer.send("auto-setup", p1Url, p2Url),
   sidebarStateChanged: (isCollapsed) =>
     ipcRenderer.send("sidebar-state-change", isCollapsed),
-  // *** NEW: Control BrowserView visibility ***
   setGameViewsVisibility: (visible) =>
     ipcRenderer.send("set-game-views-visibility", visible),
+  // *** NEW: Toggle Spacebar Shortcut ***
+  toggleSpacebarShortcut: (enabled) =>
+    ipcRenderer.send("toggle-spacebar-shortcut", enabled),
+  // *** NEW: Open External URL ***
+  openExternalUrl: (url) => ipcRenderer.send("open-external-url", url),
+
 
   // On
   onLobbySuccess: (callback) =>
@@ -40,5 +45,5 @@ contextBridge.exposeInMainWorld("api", {
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
 });
 
-// Added setGameViewsVisibility
-console.log("Preload script loaded (with setGameViewsVisibility).");
+console.log("Preload script loaded (with shortcut toggle and open URL).");
+

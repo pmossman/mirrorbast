@@ -1,0 +1,1 @@
+I have an electron app that wraps a web page and allows for automated setup of two sessions, to allow the user to switch back and forth easily between two players in order to play against themselves in a solitaire-like fashion.

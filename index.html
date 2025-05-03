@@ -94,9 +94,17 @@
     </div>
 
     <footer id="footer">
-      <button id="switchBtn" class="generic">
-        Switch Active Player (Spacebar)
-      </button>
+      <div class="footer-controls">
+        <button id="switchBtn" class="generic">
+          Switch Active Player (Spacebar)
+        </button>
+        <div class="spacebar-toggle-container">
+          <label for="spacebarToggle">Spacebar Shortcut:</label>
+          <button id="spacebarToggle" class="generic toggle-btn" title="Toggle Spacebar Shortcut">
+            Enabled
+          </button>
+        </div>
+      </div>
     </footer>
 
     <script defer src="renderer.js"></script>

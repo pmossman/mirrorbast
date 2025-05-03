@@ -9,6 +9,8 @@ if (window.api) {
     autoSetup,
     sidebarStateChanged,
     setGameViewsVisibility,
+    toggleSpacebarShortcut, // *** NEW ***
+    openExternalUrl, // *** NEW ***
     onLobbySuccess,
     onResetSuccess,
     onResetError,
@@ -43,18 +45,21 @@ if (window.api) {
   const backToSetupBtn = document.getElementById("backToSetupBtn");
 
   // Footer Elements
-  const switchBtnFooter = document.getElementById("switchBtn"); // Get switch button from footer
+  const switchBtnFooter = document.getElementById("switchBtn");
+  const spacebarToggleBtn = document.getElementById("spacebarToggle"); // *** NEW ***
 
   // --- State ---
   const DECK_STORAGE_KEY = "savedDecks";
   const LAST_DECK_P1_KEY = "lastDeckP1";
   const LAST_DECK_P2_KEY = "lastDeckP2";
+  const SPACEBAR_ENABLED_KEY = "spacebarShortcutEnabled"; // *** NEW ***
   let savedDecks = [];
   let isSidebarCollapsed = false;
+  let isSpacebarShortcutEnabled = true; // *** NEW: Default to true ***
 
   // --- Deck Management Functions ---
 
-  /** Loads decks and last used deck selections from localStorage. */
+  /** Loads decks, last used deck selections, and spacebar state from localStorage. */
   function loadAppState() {
     try {
       savedDecks = JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) || "[]");
@@ -64,6 +69,15 @@ if (window.api) {
       savedDecks = [];
       localStorage.removeItem(DECK_STORAGE_KEY);
     }
+
+    // *** NEW: Load spacebar state ***
+    const storedSpacebarState = localStorage.getItem(SPACEBAR_ENABLED_KEY);
+    // Default to true if not found or invalid
+    isSpacebarShortcutEnabled = storedSpacebarState === 'false' ? false : true;
+    console.log(`Loaded spacebar shortcut state: ${isSpacebarShortcutEnabled}`);
+    updateSpacebarToggleVisuals(); // Update button appearance
+    // Notify main process of the initial state on load
+    toggleSpacebarShortcut(isSpacebarShortcutEnabled);
   }
 
   /** Saves the current decks array to localStorage. */
@@ -147,6 +161,8 @@ if (window.api) {
     }
     savedDecks.forEach((deck, index) => {
       const li = document.createElement("li");
+
+      // Deck Info Div
       const infoDiv = document.createElement("div");
       const nameStrong = document.createElement("strong");
       nameStrong.textContent = deck.name || "Unnamed";
@@ -156,33 +172,36 @@ if (window.api) {
       authorSpan.textContent = `by ${deck.author || "Unknown"}`;
       authorSpan.title = `by ${deck.author || "Unknown"}`;
       infoDiv.append(nameStrong, document.createElement("br"), authorSpan);
+
+      // Buttons Div
       const buttonsDiv = document.createElement("div");
-      buttonsDiv.style.display = "flex";
-      buttonsDiv.style.flexShrink = "0";
-      buttonsDiv.style.gap = "4px";
+      buttonsDiv.className = "deck-buttons"; // Use class for styling
+
+      // *** NEW: Open URL Button ***
+      const btnOpenUrl = document.createElement("button");
+      btnOpenUrl.textContent = "Open";
+      btnOpenUrl.className = "generic open-url-btn"; // Add specific class
+      btnOpenUrl.title = `Open deck URL in browser:\n${deck.url}`;
+      btnOpenUrl.onclick = (e) => {
+          e.stopPropagation();
+          console.log(`Requesting to open URL: ${deck.url}`);
+          openExternalUrl(deck.url); // Call the API function
+      };
+
+      // Refresh Button
       const btnRefresh = document.createElement("button");
       btnRefresh.textContent = "Refresh";
       btnRefresh.className = "generic";
       btnRefresh.title = "Refresh metadata";
-      const btnDelete = document.createElement("button");
-      btnDelete.textContent = "Delete";
-      btnDelete.className = "generic";
-      btnDelete.style.backgroundColor = "#a04040";
-      btnDelete.title = "Delete deck";
-      buttonsDiv.append(btnRefresh, btnDelete);
-      li.append(infoDiv, buttonsDiv);
-      deckListElement.appendChild(li);
-    });
-    // Re-attach refresh/delete logic inside the loop as elements are recreated
-    deckListElement.querySelectorAll("li").forEach((li, index) => {
-      const deck = savedDecks[index];
-      const btnRefresh = li.querySelector("button:nth-of-type(1)");
-      const btnDelete = li.querySelector("button:nth-of-type(2)");
-      if (btnRefresh) {
-        btnRefresh.onclick = async (e) => {
+      btnRefresh.onclick = async (e) => {
           e.stopPropagation();
           btnRefresh.textContent = "...";
           btnRefresh.disabled = true;
+          btnOpenUrl.disabled = true; // Disable other buttons during refresh
+          // Find delete button to disable it too
+          const btnDelete = li.querySelector(".delete-btn");
+          if (btnDelete) btnDelete.disabled = true;
+
           try {
             const newMeta = await fetchMetadata(deck.url);
             if (
@@ -193,25 +212,35 @@ if (window.api) {
             ) {
               savedDecks[index] = { url: deck.url, ...newMeta };
               saveDecks();
-              renderDeckList();
-              populateSelects();
+              renderDeckList(); // Re-render the whole list
+              populateSelects(); // Update dropdowns
               console.log(`Refreshed: ${newMeta.name}`);
             } else {
               alert(`Refresh fail: ${newMeta?.name || "Unknown"}`);
               console.warn("Refresh fail:", deck.url, newMeta);
+              // Re-enable buttons on failure (renderDeckList will re-enable on success)
               btnRefresh.textContent = "Refresh";
               btnRefresh.disabled = false;
+              btnOpenUrl.disabled = false;
+              if (btnDelete) btnDelete.disabled = false;
             }
           } catch (error) {
             console.error("Refresh error:", error);
             alert(`Refresh error: ${error.message}`);
+            // Re-enable buttons on error
             btnRefresh.textContent = "Refresh";
             btnRefresh.disabled = false;
+            btnOpenUrl.disabled = false;
+            if (btnDelete) btnDelete.disabled = false;
           }
-        };
-      }
-      if (btnDelete) {
-        btnDelete.onclick = (e) => {
+      };
+
+      // Delete Button
+      const btnDelete = document.createElement("button");
+      btnDelete.textContent = "Delete";
+      btnDelete.className = "generic delete-btn"; // Add specific class
+      btnDelete.title = "Delete deck";
+      btnDelete.onclick = (e) => {
           e.stopPropagation();
           if (confirm(`Delete "${deck.name || "this deck"}"?`)) {
             savedDecks.splice(index, 1);
@@ -220,10 +249,17 @@ if (window.api) {
             populateSelects();
             console.log(`Deleted: ${deck.name || deck.url}`);
           }
-        };
-      }
+      };
+
+      // Append buttons to buttonsDiv
+      buttonsDiv.append(btnOpenUrl, btnRefresh, btnDelete); // Open button first
+
+      // Append info and buttons to list item
+      li.append(infoDiv, buttonsDiv);
+      deckListElement.appendChild(li);
     });
   }
+
 
   /** Populates dropdowns and attempts to select the last used deck. */
   function populateSelects() {
@@ -232,12 +268,14 @@ if (window.api) {
 
     [p1Select, p2Select].forEach((select, index) => {
       const lastSelectedUrl = index === 0 ? lastP1 : lastP2;
+      const currentVal = select.value; // Store current value before clearing
       let foundLastSelected = false;
-      select.innerHTML = "";
+      select.innerHTML = ""; // Clear existing options
       const defaultOpt = document.createElement("option");
       defaultOpt.value = "";
       defaultOpt.textContent = "Select Deck...";
       select.append(defaultOpt);
+
       savedDecks.forEach((deck) => {
         const opt = document.createElement("option");
         opt.value = deck.url;
@@ -245,14 +283,23 @@ if (window.api) {
         opt.title = `${deck.name || "Unnamed Deck"} (${
           deck.author || "Unknown"
         })`;
+        // Select if it matches the last used URL for this player
         if (deck.url === lastSelectedUrl) {
           opt.selected = true;
           foundLastSelected = true;
         }
         select.append(opt);
       });
-      if (!foundLastSelected) {
-        select.value = "";
+
+      // If the last selected URL wasn't found (e.g., deleted), try to restore the previous value if it still exists
+      if (!foundLastSelected && savedDecks.some(deck => deck.url === currentVal)) {
+          select.value = currentVal;
+      } else if (!foundLastSelected) {
+          select.value = ""; // Otherwise, default to "Select Deck..."
+      }
+      // If a last selection was found, ensure the select's value reflects it
+      if (foundLastSelected) {
+          select.value = lastSelectedUrl;
       }
     });
   }
@@ -261,7 +308,7 @@ if (window.api) {
 
   /** Shows the main setup/gameplay sidebar view. */
   function showMainSidebarView() {
-    // *** Tell main process to show the game views ***
+    // Tell main process to show the game views
     setGameViewsVisibility(true);
     bodyElement.classList.remove("deck-view-active");
     deckManagementView.style.display = "none";
@@ -271,7 +318,7 @@ if (window.api) {
 
   /** Shows the deck management sidebar view (full window). */
   function showDeckManagementView() {
-    // *** Tell main process to hide the game views ***
+    // Tell main process to hide the game views
     setGameViewsVisibility(false);
     bodyElement.classList.add("deck-view-active");
     setSidebarCollapsed(false); // Ensure sidebar CSS is expanded when showing deck management
@@ -307,6 +354,43 @@ if (window.api) {
     }
     setSidebarCollapsed(!isSidebarCollapsed);
   }
+
+  // --- Spacebar Shortcut Toggle Functions ---
+
+  /** Updates the visual appearance of the spacebar toggle button. */
+  function updateSpacebarToggleVisuals() {
+    if (isSpacebarShortcutEnabled) {
+      spacebarToggleBtn.textContent = "Enabled";
+      spacebarToggleBtn.classList.add("enabled");
+      spacebarToggleBtn.classList.remove("disabled");
+      spacebarToggleBtn.title = "Spacebar shortcut is ENABLED. Click to disable.";
+    } else {
+      spacebarToggleBtn.textContent = "Disabled";
+      spacebarToggleBtn.classList.add("disabled");
+      spacebarToggleBtn.classList.remove("enabled");
+      spacebarToggleBtn.title = "Spacebar shortcut is DISABLED. Click to enable.";
+    }
+  }
+
+  /** Handles clicking the spacebar toggle button. */
+  function handleSpacebarToggle() {
+    isSpacebarShortcutEnabled = !isSpacebarShortcutEnabled; // Flip the state
+    console.log(`Spacebar shortcut toggled to: ${isSpacebarShortcutEnabled}`);
+
+    // Save the new state to localStorage
+    localStorage.setItem(SPACEBAR_ENABLED_KEY, isSpacebarShortcutEnabled);
+
+    // Update the button's appearance
+    updateSpacebarToggleVisuals();
+
+    // Tell the main process to enable/disable the global shortcut
+    toggleSpacebarShortcut(isSpacebarShortcutEnabled);
+
+    // *** IMPORTANT: Unfocus the button immediately after clicking ***
+    // This prevents accidentally toggling it back if the user hits spacebar right away.
+    spacebarToggleBtn.blur();
+  }
+
 
   // --- Event Handlers ---
 
@@ -370,7 +454,7 @@ if (window.api) {
 
   /** Handles the click event for the Auto Setup button. */
   function handleAutoSetup() {
-    // *** Ensure we're not in deck management view ***
+    // Ensure we're not in deck management view
     if (bodyElement.classList.contains("deck-view-active")) {
       console.log("Auto Setup ignored (deck view active).");
       return;
@@ -397,12 +481,13 @@ if (window.api) {
     manageDecksBtn.disabled = true;
     p1AddSelectBtn.disabled = true;
     p2AddSelectBtn.disabled = true;
+    spacebarToggleBtn.disabled = true; // Disable toggle during setup
     autoSetup(p1Url, p2Url);
   }
 
   /** Handles the click event for the Reset button. */
   function handleReset() {
-    // *** Ensure we're not in deck management view ***
+    // Ensure we're not in deck management view
     if (bodyElement.classList.contains("deck-view-active")) {
       console.log("Reset ignored (deck view active).");
       return;
@@ -416,6 +501,7 @@ if (window.api) {
       manageDecksBtn.disabled = true;
       p1AddSelectBtn.disabled = true;
       p2AddSelectBtn.disabled = true;
+      spacebarToggleBtn.disabled = true; // Disable toggle during reset
       resetApp();
     }
   }
@@ -433,6 +519,7 @@ if (window.api) {
     manageDecksBtn.disabled = false;
     p1AddSelectBtn.disabled = false;
     p2AddSelectBtn.disabled = false;
+    spacebarToggleBtn.disabled = false; // Re-enable toggle
     // Ensure main view is shown (which also ensures game views are visible)
     showMainSidebarView();
     // Auto-collapse request is handled separately via onCollapseSidebarRequest
@@ -450,6 +537,7 @@ if (window.api) {
     manageDecksBtn.disabled = false;
     p1AddSelectBtn.disabled = false;
     p2AddSelectBtn.disabled = false;
+    spacebarToggleBtn.disabled = false; // Re-enable toggle
     setSidebarCollapsed(false); // Ensure sidebar is expanded on error
     showMainSidebarView(); // Ensure main view is shown (makes game views visible)
   }
@@ -464,9 +552,13 @@ if (window.api) {
     manageDecksBtn.disabled = false;
     p1AddSelectBtn.disabled = false;
     p2AddSelectBtn.disabled = false;
-    saveLastDeckSelection(1, "");
-    saveLastDeckSelection(2, "");
-    populateSelects();
+    spacebarToggleBtn.disabled = false; // Re-enable toggle
+
+    // *** MODIFIED: DO NOT clear last deck selections ***
+    // saveLastDeckSelection(1, ""); // REMOVED
+    // saveLastDeckSelection(2, ""); // REMOVED
+
+    populateSelects(); // Repopulate - will now re-select last used if they exist
     setSidebarCollapsed(false); // Ensure sidebar is expanded
     showMainSidebarView(); // Ensure main view shown (makes game views visible)
   }
@@ -482,16 +574,21 @@ if (window.api) {
     manageDecksBtn.disabled = false;
     p1AddSelectBtn.disabled = false;
     p2AddSelectBtn.disabled = false;
+    spacebarToggleBtn.disabled = false; // Re-enable toggle
     setSidebarCollapsed(false); // Ensure sidebar is expanded
     showMainSidebarView(); // Ensure main view shown (makes game views visible)
+    // Repopulate selects even on failure, might fix visual state
+    populateSelects();
   }
 
   /** Handles the trigger to switch players (e.g., from Spacebar). */
   function handleTriggerSwitch() {
-    // Only switch if deck management view is NOT active
-    if (!bodyElement.classList.contains("deck-view-active")) {
-      console.log("Renderer: Trigger switch received via Spacebar.");
+    // *** NEW: Only switch if shortcut is enabled AND not in deck view ***
+    if (isSpacebarShortcutEnabled && !bodyElement.classList.contains("deck-view-active")) {
+      console.log("Renderer: Trigger switch received via Spacebar (and enabled).");
       switchPlayer(); // Call the exposed API function
+    } else if (!isSpacebarShortcutEnabled) {
+      console.log("Renderer: Trigger switch ignored (shortcut disabled).");
     } else {
       console.log("Renderer: Trigger switch ignored (deck view active).");
     }
@@ -532,29 +629,36 @@ if (window.api) {
     p2AddSelectBtn.addEventListener("click", () =>
       handleAddAndSelectDeck(p2UrlInput, p2Select, p2AddSelectBtn, 2)
     );
+    // Save selection on change
     p1Select.addEventListener("change", () =>
       saveLastDeckSelection(1, p1Select.value)
     );
     p2Select.addEventListener("change", () =>
       saveLastDeckSelection(2, p2Select.value)
     );
+    // Deck Management View listeners
     addDeckBtn.addEventListener("click", handleAddDeck);
     backToSetupBtn.addEventListener("click", showMainSidebarView); // Shows main view, shows game views
+
+    // Footer listeners
     switchBtnFooter.addEventListener("click", () => {
-      // Only allow switch if not in deck view
+      // Only allow switch via button if not in deck view (spacebar check is separate)
       if (!bodyElement.classList.contains("deck-view-active")) {
         switchPlayer();
       } else {
         console.log("Switch button ignored (deck view active).");
       }
     });
+    // *** NEW: Spacebar Toggle Listener ***
+    spacebarToggleBtn.addEventListener("click", handleSpacebarToggle);
+
 
     // IPC Listeners
     onLobbySuccess(onGameReady);
     onAutoSetupError(onSetupError);
     onResetSuccess(onResetComplete);
     onResetError(onResetFail);
-    onTriggerSwitch(handleTriggerSwitch);
+    onTriggerSwitch(handleTriggerSwitch); // Triggered by main process (spacebar)
     onSetSidebarCollapsed(handleSetSidebarCollapsed);
     onCollapseSidebarRequest(handleCollapseRequest);
 
@@ -580,8 +684,8 @@ if (window.api) {
   /** Initializes the renderer application. */
   function initialize() {
     console.log("Initializing Mirrorbast renderer...");
-    loadAppState();
-    populateSelects();
+    loadAppState(); // Loads decks AND spacebar state
+    populateSelects(); // Populates dropdowns, respecting loaded last selections
     setupEventListeners();
     setSidebarCollapsed(false); // Ensure sidebar starts expanded
     showMainSidebarView(); // Ensure main view shown (makes game views visible)

@@ -6,6 +6,7 @@ const {
   ipcMain,
   clipboard,
   globalShortcut,
+  shell // *** NEW: Added shell module ***
 } = require("electron");
 const path = require("path");
 const fetch = require("node-fetch"); // Ensure node-fetch@2 is installed
@@ -24,8 +25,9 @@ let mainWindow;
 let view1, view2;
 let currentView = 1; // 1 or 2
 let currentSidebarWidth = DEFAULT_SIDEBAR_WIDTH; // Track current sidebar width
-// *** NEW: Track if game views should be visible ***
 let gameViewsVisible = true;
+// *** NEW: Track if spacebar shortcut should be active ***
+let isSpacebarShortcutGloballyEnabled = true; // Default to enabled
 
 /**
  * Creates the main application window and sets up BrowserViews.
@@ -33,6 +35,7 @@ let gameViewsVisible = true;
 function createWindow() {
   currentSidebarWidth = DEFAULT_SIDEBAR_WIDTH; // Reset on create
   gameViewsVisible = true; // Reset on create
+  isSpacebarShortcutGloballyEnabled = true; // Reset on create
 
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -107,9 +110,6 @@ function createWindow() {
 
   // Window Event Handling
   mainWindow.on("resize", () => {
-    // Always resize both views when window resizes,
-    // their visibility relative to the sidebar collapse is handled by CSS in the renderer.
-    // resizeView will respect the gameViewsVisible flag.
     resizeView(view1);
     resizeView(view2);
   });
@@ -118,14 +118,20 @@ function createWindow() {
   });
 }
 
-/** Registers the Spacebar global shortcut. */
+/** Registers the Spacebar global shortcut IF it's globally enabled. */
 function registerSpaceShortcut() {
+  // Only register if the global flag allows it
+  if (!isSpacebarShortcutGloballyEnabled) {
+      console.log("Spacebar shortcut registration skipped (globally disabled).");
+      return;
+  }
+
   if (!globalShortcut.isRegistered("Space")) {
     const ret = globalShortcut.register("Space", () => {
       // Just check if the window is valid
       if (mainWindow?.webContents && !mainWindow.webContents.isDestroyed()) {
         console.log("Spacebar pressed, sending trigger-switch");
-        // *** Check if game views are visible before triggering switch ***
+        // Check if game views are visible before triggering switch
         if (gameViewsVisible) {
           mainWindow.webContents.send("trigger-switch");
         } else {
@@ -135,9 +141,9 @@ function registerSpaceShortcut() {
         }
       } else {
         console.warn(
-          "Spacebar pressed, but mainWindow invalid. Unregistering shortcut."
+          "Spacebar pressed, but mainWindow invalid. Attempting to unregister shortcut."
         );
-        unregisterSpaceShortcut();
+        unregisterSpaceShortcut(); // Attempt cleanup
       }
     });
     if (ret) {
@@ -145,6 +151,8 @@ function registerSpaceShortcut() {
     } else {
       console.error("Failed to register Spacebar shortcut.");
     }
+  } else {
+      console.log("Spacebar shortcut already registered.");
   }
 }
 
@@ -153,6 +161,8 @@ function unregisterSpaceShortcut() {
   if (globalShortcut.isRegistered("Space")) {
     globalShortcut.unregister("Space");
     console.log("Spacebar shortcut unregistered.");
+  } else {
+      console.log("Spacebar shortcut was not registered.");
   }
 }
 
@@ -162,10 +172,8 @@ function resizeView(view) {
     return;
   }
 
-  // *** If game views are meant to be hidden, don't resize (they should be at 0x0) ***
+  // If game views are meant to be hidden, don't resize (they should be at 0x0)
   if (!gameViewsVisible) {
-    // console.log(`Resize skipped for View ${view === view1 ? 1 : 2}: Game views hidden.`);
-    // Ensure they *stay* hidden if they somehow got bounds again
     try {
       view.setBounds({ x: 0, y: HEADER_HEIGHT, width: 0, height: 0 });
     } catch (error) {
@@ -189,11 +197,8 @@ function resizeView(view) {
       currentSidebarWidth <= COLLAPSED_SIDEBAR_WIDTH ? width : viewWidth;
 
     if (effectiveWidth <= 1 || viewHeight <= 1) {
-      // Don't resize to invalid dimensions, but don't log excessively
-      // console.warn(`Resize skipped: Calculated invalid dimensions ${effectiveWidth}x${viewHeight}`);
       return;
     }
-    // console.log(`Resizing View ${view === view1 ? 1 : 2} to: x=${viewX}, y=${HEADER_HEIGHT}, w=${effectiveWidth}, h=${viewHeight} (Sidebar: ${currentSidebarWidth})`);
     view.setBounds({
       x: viewX,
       y: HEADER_HEIGHT,
@@ -262,7 +267,7 @@ ipcMain.handle("fetch-metadata", async (_, url) => {
 });
 
 ipcMain.on("switch-player", () => {
-  // *** Don't switch if views aren't visible ***
+  // Don't switch if views aren't visible
   if (!gameViewsVisible) {
     console.log("Switch player ignored: Game views not visible.");
     return;
@@ -279,9 +284,7 @@ ipcMain.on("switch-player", () => {
   ) {
     setCurrentView(nextViewNum);
     mainWindow.setBrowserView(activeView); // Bring the new active view to the front
-    // Resize according to current sidebar state (resizeView respects gameViewsVisible)
     resizeView(activeView);
-    // Also resize the *inactive* view so it's correct if switched back to later
     resizeView(nextViewNum === 1 ? view2 : view1);
   } else {
     console.error(`Cannot switch player: View ${nextViewNum} invalid.`);
@@ -290,11 +293,10 @@ ipcMain.on("switch-player", () => {
 
 ipcMain.on("reset-phase", (event) => {
   console.log("Resetting application views...");
-  // *** Ensure views are visible before reloading ***
+  // Ensure views are visible before reloading
   if (!gameViewsVisible) {
     console.log("Making game views visible before reset.");
     gameViewsVisible = true;
-    // Resize immediately (needed if reset fails early)
     resizeView(view1);
     resizeView(view2);
     if (mainWindow && currentView === 1 && view1)
@@ -383,11 +385,10 @@ ipcMain.on("reset-phase", (event) => {
 ipcMain.on("auto-setup", async (event, p1Url, p2Url) => {
   console.log("Received 'auto-setup' request.");
 
-  // *** Ensure views are visible before setup ***
+  // Ensure views are visible before setup
   if (!gameViewsVisible) {
     console.log("Making game views visible before auto-setup.");
     gameViewsVisible = true;
-    // Resize immediately and set active view
     resizeView(view1);
     resizeView(view2);
     if (mainWindow && view1) mainWindow.setBrowserView(view1); // Start with P1
@@ -409,8 +410,8 @@ ipcMain.on("auto-setup", async (event, p1Url, p2Url) => {
       setCurrentView(1);
       currentSidebarWidth = DEFAULT_SIDEBAR_WIDTH;
       mainWindow.setBrowserView(targetView);
-      resizeView(targetView); // Resize P1 (respects gameViewsVisible)
-      resizeView(view2); // Resize P2 as well
+      resizeView(targetView);
+      resizeView(view2);
       mainWindow.webContents.send("set-sidebar-collapsed", false); // Tell renderer to expand UI
       await new Promise((r) => setTimeout(r, 300));
     } else {
@@ -439,12 +440,11 @@ ipcMain.on("sidebar-state-change", (event, isCollapsed) => {
   currentSidebarWidth = isCollapsed
     ? COLLAPSED_SIDEBAR_WIDTH
     : DEFAULT_SIDEBAR_WIDTH;
-  // Resize views - resizeView respects gameViewsVisible flag
   resizeView(view1);
   resizeView(view2);
 });
 
-// *** NEW: Handler to show/hide game views ***
+// --- Game View Visibility Handler ---
 ipcMain.on("set-game-views-visibility", (event, visible) => {
   console.log(`Setting game views visibility to: ${visible}`);
   if (gameViewsVisible === visible) return; // No change
@@ -452,8 +452,7 @@ ipcMain.on("set-game-views-visibility", (event, visible) => {
   gameViewsVisible = visible;
 
   if (visible) {
-    // Make views visible: Resize both based on current sidebar state
-    // and ensure the correct one is on top.
+    // Make views visible
     console.log("Resizing views to make them visible.");
     resizeView(view1);
     resizeView(view2);
@@ -464,7 +463,7 @@ ipcMain.on("set-game-views-visibility", (event, visible) => {
       console.warn("Could not set active view after making visible.");
     }
   } else {
-    // Make views hidden: Set bounds to zero for both
+    // Make views hidden
     console.log("Setting view bounds to zero to hide them.");
     try {
       if (view1 && !view1.webContents.isDestroyed()) {
@@ -479,27 +478,86 @@ ipcMain.on("set-game-views-visibility", (event, visible) => {
   }
 });
 
+// *** NEW: Handler to toggle spacebar shortcut ***
+ipcMain.on("toggle-spacebar-shortcut", (event, enabled) => {
+    console.log(`Received request to set spacebar shortcut enabled: ${enabled}`);
+    isSpacebarShortcutGloballyEnabled = enabled;
+    if (mainWindow?.isFocused()) { // Only change registration if window is focused
+        if (enabled) {
+            registerSpaceShortcut();
+        } else {
+            unregisterSpaceShortcut();
+        }
+    } else {
+        console.log("Window not focused, shortcut registration state will update on focus.");
+    }
+});
+
+// *** NEW: Handler to open external URL ***
+ipcMain.on("open-external-url", (event, url) => {
+    console.log(`Received request to open external URL: ${url}`);
+    if (url && (url.startsWith('http:') || url.startsWith('https:'))) {
+        shell.openExternal(url).catch(err => {
+            console.error(`Failed to open external URL "${url}":`, err);
+            // Optionally, notify the renderer of the failure
+            // event.reply('open-external-url-error', url, err.message);
+        });
+    } else {
+        console.warn(`Attempted to open invalid external URL: ${url}`);
+        // Optionally, notify the renderer
+        // event.reply('open-external-url-error', url, 'Invalid URL format');
+    }
+});
+
+
 // --- Electron App Lifecycle ---
-app.whenReady().then(createWindow);
-app.on("browser-window-focus", registerSpaceShortcut);
-app.on("browser-window-blur", unregisterSpaceShortcut);
+app.whenReady().then(() => {
+    createWindow();
+    // Initial registration attempt on ready (if enabled)
+    registerSpaceShortcut();
+});
+
+app.on("browser-window-focus", () => {
+    console.log("Window focused, ensuring correct spacebar shortcut state.");
+    // Re-evaluate shortcut registration based on the global flag when window gains focus
+    if (isSpacebarShortcutGloballyEnabled) {
+        registerSpaceShortcut();
+    } else {
+        unregisterSpaceShortcut();
+    }
+});
+
+app.on("browser-window-blur", () => {
+    console.log("Window blurred, unregistering spacebar shortcut.");
+    // Always unregister when window loses focus
+    unregisterSpaceShortcut();
+});
+
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
 });
+
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
-  registerSpaceShortcut();
+  // Re-evaluate shortcut registration on activate (macOS)
+  if (isSpacebarShortcutGloballyEnabled) {
+      registerSpaceShortcut();
+  }
 });
+
 app.on("will-quit", () => {
+  // Clean up shortcut before quitting
   unregisterSpaceShortcut();
 });
+
 app.on("gpu-process-crashed", (event, killed) =>
   console.error(`GPU crash! Killed: ${killed}`)
 );
+
 app.on("renderer-process-crashed", (event, webContents, killed) => {
   console.error(
     `Renderer crash! URL: ${webContents?.getURL()}, Killed: ${killed}`
