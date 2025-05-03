@@ -14,12 +14,9 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.send("sidebar-state-change", isCollapsed),
   setGameViewsVisibility: (visible) =>
     ipcRenderer.send("set-game-views-visibility", visible),
-  // *** NEW: Toggle Spacebar Shortcut ***
   toggleSpacebarShortcut: (enabled) =>
     ipcRenderer.send("toggle-spacebar-shortcut", enabled),
-  // *** NEW: Open External URL ***
   openExternalUrl: (url) => ipcRenderer.send("open-external-url", url),
-
 
   // On
   onLobbySuccess: (callback) =>
@@ -30,8 +27,14 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.on("reset-error", (event, ...args) => callback(...args)),
   onAutoSetupError: (callback) =>
     ipcRenderer.on("auto-setup-error", (event, ...args) => callback(...args)),
-  onTriggerSwitch: (callback) =>
-    ipcRenderer.on("trigger-switch", (event, ...args) => callback(...args)),
+  onTriggerSwitch: (
+    callback // Used by main process for spacebar
+  ) => ipcRenderer.on("trigger-switch", (event, ...args) => callback(...args)),
+  // *** NEW: Listen for player switch confirmation from main ***
+  onPlayerSwitched: (callback) =>
+    ipcRenderer.on("player-switched", (event, playerNum) =>
+      callback(playerNum)
+    ),
   onSetSidebarCollapsed: (callback) =>
     ipcRenderer.on("set-sidebar-collapsed", (e, isCollapsed) =>
       callback(isCollapsed)
@@ -45,5 +48,4 @@ contextBridge.exposeInMainWorld("api", {
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
 });
 
-console.log("Preload script loaded (with shortcut toggle and open URL).");
-
+console.log("Preload script loaded (with player switch listener).");

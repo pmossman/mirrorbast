@@ -7,9 +7,11 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:; connect-src 'self';"
     />
-    <title>Mirrorbast</title>
+    <title>MIRRORBAST</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
@@ -17,7 +19,7 @@
   <body>
     <div id="header">
       <button id="sidebarToggleBtn" title="Toggle Sidebar">☰</button>
-      <h1>Mirrorbast</h1>
+      <h1>MIRRORBAST</h1>
     </div>
 
     <div id="container">
@@ -95,12 +97,19 @@
 
     <footer id="footer">
       <div class="footer-controls">
+        <span id="activePlayerIndicator">Player 1 Active</span>
+
         <button id="switchBtn" class="generic">
           Switch Active Player (Spacebar)
         </button>
+
         <div class="spacebar-toggle-container">
           <label for="spacebarToggle">Spacebar Shortcut:</label>
-          <button id="spacebarToggle" class="generic toggle-btn" title="Toggle Spacebar Shortcut">
+          <button
+            id="spacebarToggle"
+            class="generic toggle-btn"
+            title="Toggle Spacebar Shortcut"
+          >
             Enabled
           </button>
         </div>

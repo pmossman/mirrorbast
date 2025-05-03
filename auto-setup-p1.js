@@ -123,6 +123,7 @@ async function setupPlayer1(appContext, p1Url) {
     `P1 Setup: Adding delay (${DELAYS.LONG}ms) for backend lobby preparation...`
   );
   await delay(DELAYS.LONG);
+  await delay(DELAYS.LONG);
 
   console.log("--- Player 1 Setup Phase Complete ---");
   return inviteLink;

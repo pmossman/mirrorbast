@@ -3,9 +3,10 @@
 
 // --- Simplified Delay Constants (in milliseconds) ---
 const DELAYS = {
-  SHORT: 100, // For quick actions or brief pauses between checks
-  MEDIUM: 500, // For standard waits after clicks, view switches, or initial load settling
-  LONG: 2000, // For potentially slower operations like imports or settling after refresh
+  // Updated values as requested
+  SHORT: 200, // For quick actions or brief pauses between checks
+  MEDIUM: 1000, // For standard waits after clicks, view switches, or initial load settling
+  LONG: 3000, // For potentially slower operations like imports, backend settle, or settling after refresh
   POLL: 150, // Interval for polling loops and internal waits
 };
 
@@ -72,7 +73,7 @@ const findAndClickElementByText = async (
   elementText,
   stepDescription,
   selector = "button",
-  timeout = 5000
+  timeout = 5000 // Timeout for the overall find operation remains separate
 ) => {
   const startTime = Date.now();
   const lowerElementText = elementText.toLowerCase();

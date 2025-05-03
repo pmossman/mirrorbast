@@ -6,9 +6,11 @@ html {
   margin: 0;
   padding: 0;
   height: 100%;
-  font-family: "Orbitron", sans-serif;
+  /* --- Use Barlow as the base font --- */
+  font-family: "Barlow", sans-serif;
   background-color: #0d0d0d;
-  color: #ffe81f;
+  /* --- Changed default text color slightly --- */
+  color: #eeeeee;
   overflow: hidden;
   box-sizing: border-box;
   font-size: 15px; /* Base font size */
@@ -18,6 +20,19 @@ html {
 *:before,
 *:after {
   box-sizing: inherit;
+}
+
+/* --- Player Color Variables --- */
+:root {
+  --player1-color: #4488ff; /* Blue */
+  --player2-color: #ff4444; /* Red */
+  --neutral-border-color: #555555; /* Neutral gray for borders */
+  --neutral-text-color: #cccccc; /* Light gray for text accents */
+  --button-bg-color: #5a5a5a; /* Neutral button background */
+  --button-text-color: #eeeeee; /* Light text for buttons */
+  --button-hover-bg-color: #707070;
+  --button-active-bg-color: #484848;
+  --footer-height: 50px;
 }
 
 /* Header Styles */
@@ -30,22 +45,30 @@ html {
   background-color: #1f1f1f;
   display: flex;
   align-items: center;
-  padding: 0 15px; /* Adjusted padding */
-  border-bottom: 2px solid #ffe81f;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  padding: 0 15px;
+  /* --- Use neutral border color --- */
+  border-bottom: 2px solid var(--neutral-border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   z-index: 1000;
 }
 #header h1 {
   margin: 0 0 0 10px;
-  font-size: 1.3em;
-  color: #ffe81f;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  font-size: 1.4em; /* Slightly larger */
+  /* --- Use neutral text color --- */
+  color: var(--neutral-text-color);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); /* Stronger shadow */
   white-space: nowrap;
+  /* --- Set font, weight, and transform --- */
+  font-family: "Barlow", sans-serif;
+  font-weight: 700; /* Bold */
+  text-transform: uppercase; /* ALL CAPS */
+  letter-spacing: 1px; /* Add slight spacing */
 }
 #sidebarToggleBtn {
   background: none;
   border: none;
-  color: #ffe81f;
+  /* --- Use neutral text color --- */
+  color: var(--neutral-text-color);
   font-size: 1.8em;
   padding: 0 10px;
   margin: 0;
@@ -62,16 +85,10 @@ html {
   border-radius: 4px;
 }
 
-/* *** Define Footer Height *** */
-:root {
-  --footer-height: 50px; /* Adjust as needed */
-}
-
 /* Main Container Layout */
 #container {
   position: absolute;
   top: 60px;
-  /* *** Adjust bottom to make space for footer *** */
   bottom: var(--footer-height);
   left: 0;
   right: 0;
@@ -129,17 +146,19 @@ body.deck-view-active #sidebar {
   border-right: none;
 }
 body.deck-view-active #content {
-  display: none;
+  display: none; /* Keep content hidden */
 }
 /* Section Headers in Sidebar */
 #sidebar h2,
 #sidebar h3 {
-  color: #ffe81f;
+  /* --- Use neutral text color --- */
+  color: var(--neutral-text-color);
   border-bottom: 1px solid #444;
   padding-bottom: 4px;
   margin-top: 12px;
   margin-bottom: 8px;
   font-size: 1em;
+  font-weight: 700; /* Make headers bold */
 }
 #sidebar h2:first-child,
 #sidebar h3:first-child {
@@ -217,16 +236,36 @@ button {
   font-size: 0.85em;
   background-color: #333;
   color: #eee;
-  font-family: inherit;
+  font-family: inherit; /* Inherit Barlow */
 }
 input[type="text"]::placeholder {
   color: #888;
   opacity: 0.7;
 }
+
+/* --- Player Specific Select Styles --- */
+select#p1Select {
+  border: 2px solid var(--player1-color);
+  color: var(--player1-color);
+  font-weight: bold;
+}
+select#p2Select {
+  border: 2px solid var(--player2-color);
+  color: var(--player2-color);
+  font-weight: bold;
+}
+/* Ensure dropdown options are readable */
+select option {
+  color: #eee; /* Standard text color for options */
+  background-color: #333; /* Match select background */
+  font-weight: normal; /* Reset font weight for options */
+}
+
 /* Button Styles */
 button.generic {
-  background-color: #ffe81f;
-  color: #1a1a1a;
+  /* --- Use neutral button colors --- */
+  background-color: var(--button-bg-color);
+  color: var(--button-text-color);
   cursor: pointer;
   font-weight: bold;
   border: none;
@@ -237,27 +276,37 @@ button.generic {
   align-items: center;
   justify-content: center;
 }
-button.generic:hover {
-  background-color: #fff352;
+button.generic:hover:not(:disabled) {
+  background-color: var(--button-hover-bg-color);
 }
-button.generic:active {
-  background-color: #e6cf1a;
+button.generic:active:not(:disabled) {
+  background-color: var(--button-active-bg-color);
   transform: scale(0.98);
 }
 button.generic:disabled {
-  background-color: #555;
-  color: #999;
+  background-color: #444; /* Darker disabled background */
+  color: #888; /* Lighter disabled text */
   cursor: not-allowed;
   transform: none;
 }
-/* Primary Action Button Style */
+/* Primary Action Button Style (Keep distinct?) */
+/* Option: Make it slightly brighter neutral */
 button.primary-action {
+  background-color: #777777; /* Brighter neutral */
+  color: #ffffff;
   padding: 10px 12px;
   font-size: 0.9em;
   margin-top: 10px;
   margin-bottom: 15px;
 }
-/* Secondary Action Button Style */
+button.primary-action:hover:not(:disabled) {
+  background-color: #888888;
+}
+button.primary-action:active:not(:disabled) {
+  background-color: #666666;
+}
+
+/* Secondary Action Button Style (Already neutral) */
 button.secondary-action {
   background-color: #4f4f4f;
   color: #ddd;
@@ -284,6 +333,7 @@ button.secondary-action:active:not(:disabled) {
   max-width: 180px;
   align-self: center;
 }
+/* Keep Reset red */
 #resetBtn {
   background-color: #c62828;
   color: #fff;
@@ -295,17 +345,11 @@ button.secondary-action:active:not(:disabled) {
   background-color: #b71c1c;
   transform: scale(0.98);
 }
+/* Back button uses generic neutral now */
 #backToSetupBtn {
-  background-color: #444;
-  color: #fff;
+  /* Inherits generic styles */
 }
-#backToSetupBtn:hover:not(:disabled) {
-  background-color: #555;
-}
-#backToSetupBtn:active:not(:disabled) {
-  background-color: #333;
-  transform: scale(0.98);
-}
+
 /* Deck List Styles */
 ul#deckList {
   list-style: none;
@@ -355,11 +399,12 @@ ul#deckList li button {
   width: auto;
   padding: 3px 6px;
   font-size: 0.8em;
-  margin-left: 0; /* Removed margin-left */
+  margin-left: 0;
   margin-bottom: 0;
   flex-shrink: 0;
 }
 /* Specific Deck List Button Styles */
+/* Keep delete red */
 ul#deckList li button.delete-btn {
   background-color: #a04040;
   color: white;
@@ -367,51 +412,93 @@ ul#deckList li button.delete-btn {
 ul#deckList li button.delete-btn:hover {
   background-color: #c05050;
 }
-ul#deckList li button.open-url-btn {
-  background-color: #306090;
-  color: white;
+/* Make open/refresh neutral */
+ul#deckList li button.open-url-btn,
+ul#deckList li button.generic {
+  /* Target refresh button */
+  background-color: var(--button-bg-color);
+  color: var(--button-text-color);
 }
-ul#deckList li button.open-url-btn:hover {
-  background-color: #4075b0;
+ul#deckList li button.open-url-btn:hover,
+ul#deckList li button.generic:hover:not(:disabled) {
+  background-color: var(--button-hover-bg-color);
 }
 
 /* Main Content Area Styles */
 #content {
   flex: 1;
-  background-color: #000;
+  background-color: #000; /* Background for the content area itself */
   position: relative;
   display: block;
+  transition: border 0.3s ease-in-out;
+  border: 3px solid transparent; /* Default transparent border */
+  padding: 3px; /* Equal to border width */
+  box-sizing: border-box;
 }
 
-/* *** Footer Styles *** */
+/* Active Player Border Styles */
+#content.player1-active-border {
+  border-color: var(--player1-color);
+}
+#content.player2-active-border {
+  border-color: var(--player2-color);
+}
+
+/* Footer Styles */
 #footer {
   position: fixed;
   bottom: 0;
   left: 0;
   width: 100%;
-  height: var(--footer-height); /* Use variable */
-  background-color: #1f1f1f; /* Match header */
-  border-top: 2px solid #ffe81f; /* Match header */
+  height: var(--footer-height);
+  background-color: #1f1f1f;
+  /* --- Use neutral border color --- */
+  border-top: 2px solid var(--neutral-border-color);
   display: flex;
   align-items: center;
-  justify-content: center; /* Center the controls container */
+  justify-content: center;
   padding: 0 15px;
-  z-index: 1000; /* Ensure footer is on top */
+  z-index: 1000;
 }
 
 /* Container for footer controls */
 .footer-controls {
   display: flex;
   align-items: center;
-  gap: 20px; /* Space between switch button and toggle */
+  justify-content: space-between; /* Distribute items */
+  width: 100%;
+  max-width: 700px;
+  gap: 15px;
 }
 
 #footer button#switchBtn {
-  width: auto; /* Size to content */
-  max-width: 300px; /* Limit width */
-  margin-bottom: 0; /* Remove default margin */
-  padding: 8px 15px; /* Adjust padding */
+  width: auto;
+  margin-bottom: 0;
+  padding: 8px 15px;
   font-size: 0.9em;
+  order: 2; /* Keep switch button in the middle */
+  /* Inherits generic neutral style */
+}
+
+/* Active Player Indicator Styles */
+#activePlayerIndicator {
+  font-size: 0.9em;
+  font-weight: bold;
+  padding: 5px 10px;
+  border-radius: 4px;
+  order: 1; /* Indicator on the left */
+  flex-shrink: 0;
+  text-align: center;
+  min-width: 140px;
+  color: white; /* Base text color */
+  background-color: #444; /* Default background */
+  transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out; /* Add transition */
+}
+#activePlayerIndicator.player1-active {
+  background-color: var(--player1-color);
+}
+#activePlayerIndicator.player2-active {
+  background-color: var(--player2-color);
 }
 
 /* Spacebar Toggle Styles */
@@ -419,36 +506,36 @@ ul#deckList li button.open-url-btn:hover {
   display: flex;
   align-items: center;
   gap: 5px;
+  order: 3; /* Toggle on the right */
+  flex-shrink: 0;
 }
 .spacebar-toggle-container label {
-  margin-bottom: 0; /* Override default label margin */
+  margin-bottom: 0;
   font-size: 0.8em;
   color: #ccc;
 }
 button.toggle-btn {
-  width: auto; /* Size to content */
+  width: auto;
   padding: 5px 10px;
   font-size: 0.8em;
   min-height: 28px;
-  margin-bottom: 0; /* Remove default margin */
+  margin-bottom: 0;
+  /* Keep red/green for toggle */
 }
-/* Style for when toggle is 'enabled' */
 button.toggle-btn.enabled {
-  background-color: #4caf50; /* Green */
+  background-color: #4caf50;
   color: white;
 }
 button.toggle-btn.enabled:hover {
   background-color: #66bb6a;
 }
-/* Style for when toggle is 'disabled' */
 button.toggle-btn.disabled {
-  background-color: #f44336; /* Red */
+  background-color: #f44336;
   color: white;
 }
 button.toggle-btn.disabled:hover {
   background-color: #ef5350;
 }
-
 
 /* Scrollbar Styling */
 #sidebarContentScrollable::-webkit-scrollbar,
