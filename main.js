@@ -11,8 +11,8 @@ const {
 const path = require("path");
 const fetch = require("node-fetch");
 
-const { performAutoSetup, AbortError } = require("./auto-setup");
-const { delay } = require("./auto-setup-utils"); // Only need basic delay here now
+const { performAutoSetup } = require("./auto-setup");
+const { delay } = require("./auto-setup-utils");
 
 // Constants for layout
 const DEFAULT_SIDEBAR_WIDTH = 300;
@@ -21,6 +21,60 @@ const HEADER_HEIGHT = 60;
 const FOOTER_HEIGHT = 50;
 const BORDER_WIDTH = 3;
 
+// *** NEW: Placeholder HTML for View 2 ***
+const PLACEHOLDER_HTML_DATA_URI = `data:text/html;charset=UTF-8,${encodeURIComponent(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waiting</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #1a1a1a; /* Dark background */
+            color: #cccccc; /* Light text */
+            font-family: 'Barlow', sans-serif; /* Match app font */
+            font-size: 1.2em;
+            text-align: center;
+            overflow: hidden;
+        }
+        .container {
+            padding: 20px;
+        }
+        /* Optional: Add a subtle spinner */
+        .spinner {
+            border: 4px solid rgba(204, 204, 204, 0.3);
+            border-radius: 50%;
+            border-top-color: #cccccc;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px auto; /* Center and add space below */
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        Waiting for lobby creation...
+    </div>
+</body>
+</html>
+`)}`;
+
 // Keep track of the main window and the two browser views
 let mainWindow;
 let view1, view2;
@@ -28,11 +82,7 @@ let currentView = 1;
 let currentSidebarWidth = DEFAULT_SIDEBAR_WIDTH;
 let gameViewsVisible = true;
 let isSpacebarShortcutGloballyEnabled = true;
-let currentAbortController = null;
-
-// State for Progress Bar Management
-let activeDelayCounter = 0;
-let currentActiveDelayType = null;
+// Removed AbortController and Progress state variables
 
 /** Safely gets main window webContents if available */
 function getMainWindowWebContents() {
@@ -52,9 +102,6 @@ function createWindow() {
   currentSidebarWidth = DEFAULT_SIDEBAR_WIDTH;
   gameViewsVisible = true;
   isSpacebarShortcutGloballyEnabled = true;
-  currentAbortController = null;
-  activeDelayCounter = 0;
-  currentActiveDelayType = null;
 
   mainWindow = new BrowserWindow({
     /* ... browser window options ... */ width: 1200,
@@ -96,10 +143,13 @@ function createWindow() {
   view1.webContents
     .loadURL("https://karabast.net")
     .catch((err) => console.error("Error initiating load for View 1:", err));
-  console.log("Loading initial URL for View 2...");
+  // *** Load placeholder into View 2 initially ***
+  console.log("Loading placeholder URL for View 2...");
   view2.webContents
-    .loadURL("https://karabast.net")
-    .catch((err) => console.error("Error initiating load for View 2:", err));
+    .loadURL(PLACEHOLDER_HTML_DATA_URI)
+    .catch((err) =>
+      console.error("Error initiating load for View 2 placeholder:", err)
+    );
 
   setTimeout(() => {
     const wc = getMainWindowWebContents();
@@ -126,7 +176,6 @@ function createWindow() {
     if (view2 && !view2.webContents.isDestroyed()) resizeView(view2);
   });
   mainWindow.on("closed", () => {
-    if (currentAbortController) currentAbortController.abort();
     mainWindow = null;
   });
 }
@@ -205,17 +254,11 @@ function setCurrentView(viewNum) {
 
 /** Function to reset progress bar state and notify renderer */
 function resetAndHideProgress() {
-  if (activeDelayCounter > 0 || currentActiveDelayType !== null) {
-    console.log(
-      `[Main] Resetting progress bar state. Counter was ${activeDelayCounter}.`
-    );
-    activeDelayCounter = 0;
-    currentActiveDelayType = null;
-    const wc = getMainWindowWebContents();
-    if (wc) {
-      console.log("[Main] Sending hide-progress to renderer during reset.");
-      wc.send("hide-progress");
-    }
+  // Simplified: Just tell renderer to hide, no state needed here
+  const wc = getMainWindowWebContents();
+  if (wc) {
+    // console.log("[Main] Sending hide-spinner to renderer during reset/error.");
+    wc.send("hide-spinner");
   }
 }
 
@@ -286,12 +329,8 @@ ipcMain.on("switch-player", () => {
 
 ipcMain.on("reset-phase", (event) => {
   console.log("Resetting application views...");
-  if (currentAbortController) {
-    console.log("Reset triggered: Aborting ongoing auto-setup.");
-    currentAbortController.abort();
-    currentAbortController = null;
-  }
-  resetAndHideProgress(); // Reset progress state
+  // Removed AbortController logic
+  resetAndHideProgress(); // Ensure spinner hidden
 
   if (!gameViewsVisible) {
     /* ... make views visible ... */
@@ -346,8 +385,8 @@ ipcMain.on("reset-phase", (event) => {
     }
   };
 
+  // Reload View 1 to home
   if (view1?.webContents && !view1.webContents.isDestroyed()) {
-    /* ... reload view 1 ... */
     view1.webContents
       .loadURL("https://karabast.net")
       .then(() => {
@@ -363,15 +402,17 @@ ipcMain.on("reset-phase", (event) => {
     view1Loaded = true;
     checkCompletion();
   }
+
+  // *** Load placeholder into View 2 on reset ***
   if (view2?.webContents && !view2.webContents.isDestroyed()) {
-    /* ... reload view 2 ... */
+    console.log("Loading placeholder URL for View 2 during reset...");
     view2.webContents
-      .loadURL("https://karabast.net")
+      .loadURL(PLACEHOLDER_HTML_DATA_URI)
       .then(() => {
         view2Loaded = true;
       })
       .catch((err) => {
-        errors.push("V2:" + err.message);
+        errors.push("V2 Placeholder:" + err.message);
         view2Loaded = true;
       })
       .finally(checkCompletion);
@@ -385,16 +426,7 @@ ipcMain.on("reset-phase", (event) => {
 // --- Auto Setup Handler ---
 ipcMain.on("auto-setup", async (event, p1Url, p2Url) => {
   console.log("Received 'auto-setup' request.");
-
-  // Abort previous setup if running
-  if (currentAbortController) {
-    console.log("New setup requested, aborting previous one.");
-    currentAbortController.abort();
-    await delay(50); // Brief pause
-    resetAndHideProgress(); // Reset progress state
-  }
-  currentAbortController = new AbortController();
-  const signal = currentAbortController.signal;
+  // Removed AbortController logic
 
   // Ensure Player 1 is active before starting
   if (currentView !== 1) {
@@ -419,8 +451,7 @@ ipcMain.on("auto-setup", async (event, p1Url, p2Url) => {
     } else {
       console.error("Cannot switch to Player 1 view before auto-setup.");
       event.reply("auto-setup-error", "Cannot switch to Player 1 view.");
-      currentAbortController = null;
-      return;
+      return; // Exit early
     }
   } else {
     console.log("Player 1 already active for auto-setup.");
@@ -450,7 +481,7 @@ ipcMain.on("auto-setup", async (event, p1Url, p2Url) => {
     await delay(200);
   }
 
-  // Prepare context
+  // Prepare context (no signal needed)
   const appContext = {
     view1,
     view2,
@@ -459,30 +490,24 @@ ipcMain.on("auto-setup", async (event, p1Url, p2Url) => {
     setCurrentView,
     resizeView,
     getCurrentView: () => currentView,
-    signal: signal,
   };
 
   try {
     await performAutoSetup(event, p1Url, p2Url, appContext);
-    console.log("performAutoSetup process completed or aborted.");
+    console.log("performAutoSetup process completed.");
   } catch (error) {
-    if (!(error instanceof AbortError)) {
-      console.error(
-        "Unexpected error during performAutoSetup orchestration:",
-        error
-      );
-      if (!event.sender.isDestroyed()) {
-        event.reply(
-          "auto-setup-error",
+    console.error("Error during performAutoSetup orchestration:", error);
+    if (!event.sender.isDestroyed()) {
+      event.reply(
+        "auto-setup-error",
+        error.message ||
           "An unexpected error occurred during setup orchestration."
-        );
-      }
+      );
     }
     resetAndHideProgress(); // Ensure progress hidden on error
   } finally {
-    console.log("Clearing auto-setup AbortController.");
-    currentAbortController = null;
-    resetAndHideProgress(); // Ensure progress hidden on normal completion/abort
+    console.log("Auto-setup finished.");
+    resetAndHideProgress(); // Ensure progress hidden on normal completion
   }
 });
 
@@ -542,68 +567,7 @@ ipcMain.on("open-external-url", (event, url) => {
   }
 });
 
-// Progress Bar State Management Handlers
-ipcMain.on("start-progress-delay", (event, delayType) => {
-  const wasZero = activeDelayCounter === 0;
-  activeDelayCounter++;
-  console.log(
-    `[Main:IPC] Start delay signal received. Counter: ${activeDelayCounter}, Type: ${delayType}`
-  );
-  if (wasZero) {
-    currentActiveDelayType = delayType;
-    const wc = getMainWindowWebContents();
-    if (wc) {
-      // *** Add small delay before sending show-progress ***
-      setTimeout(() => {
-        // Re-check webContents validity *inside* the timeout
-        const wcDelayed = getMainWindowWebContents();
-        if (wcDelayed) {
-          console.log(
-            `[Main:IPC] Sending show-progress (${currentActiveDelayType}) to renderer after 50ms delay (webContents ID: ${wcDelayed.id}).`
-          );
-          wcDelayed.send("show-progress", currentActiveDelayType);
-        } else {
-          console.warn(
-            `[Main:IPC] Cannot send show-progress after delay, webContents became invalid.`
-          );
-        }
-      }, 50); // 50ms delay
-    } else {
-      console.warn(
-        `[Main:IPC] Cannot send show-progress (initial check), webContents invalid.`
-      );
-    }
-  }
-});
-
-ipcMain.on("end-progress-delay", (event) => {
-  if (activeDelayCounter <= 0) {
-    console.warn(
-      "[Main:IPC] Received end-progress-delay signal, but counter was already 0 or less."
-    );
-    activeDelayCounter = 0;
-    return;
-  }
-
-  activeDelayCounter--;
-  console.log(
-    `[Main:IPC] End delay signal received. Counter: ${activeDelayCounter}`
-  );
-  if (activeDelayCounter === 0) {
-    currentActiveDelayType = null;
-    const wc = getMainWindowWebContents();
-    if (wc) {
-      console.log(
-        `[Main:IPC] Sending hide-progress to renderer (webContents ID: ${wc.id}).`
-      );
-      wc.send("hide-progress");
-    } else {
-      console.warn(
-        `[Main:IPC] Cannot send hide-progress, webContents invalid.`
-      );
-    }
-  }
-});
+// Removed Progress Bar State Management Handlers
 
 // --- Electron App Lifecycle ---
 app.whenReady().then(() => {
@@ -625,8 +589,7 @@ app.on("activate", () => {
   if (isSpacebarShortcutGloballyEnabled) registerSpaceShortcut();
 });
 app.on("will-quit", () => {
-  unregisterSpaceShortcut();
-  if (currentAbortController) currentAbortController.abort();
+  unregisterSpaceShortcut(); /* No AbortController */
 });
 app.on("gpu-process-crashed", (event, killed) =>
   console.error(`GPU crash! Killed: ${killed}`)
