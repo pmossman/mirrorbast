@@ -5,243 +5,324 @@ body, html {
   margin: 0;
   padding: 0;
   height: 100%;
-  font-family: 'Orbitron', sans-serif; /* Sci-fi font */
-  background-color: #0d0d0d; /* Dark background */
-  color: #FFE81F; /* Yellow text, Star Wars theme */
-  overflow: hidden; /* Prevent body scrollbars */
-  box-sizing: border-box; /* Include padding and border in element's total width and height */
+  font-family: 'Orbitron', sans-serif;
+  background-color: #0d0d0d;
+  color: #FFE81F;
+  overflow: hidden;
+  box-sizing: border-box;
+  /* *** REDUCED base font size slightly *** */
+  font-size: 15px; /* Was implicitly 16px, adjust as needed */
 }
 
 *, *:before, *:after {
-  box-sizing: inherit; /* Apply box-sizing to all elements */
+  box-sizing: inherit;
 }
 
 /* Header Styles */
 #header {
-  position: fixed; /* Keep header at the top */
+  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
-  height: 60px; /* Fixed header height */
-  background-color: #1f1f1f; /* Slightly lighter dark gray */
+  height: 60px;
+  background-color: #1f1f1f;
   display: flex;
   align-items: center;
   padding: 0 20px;
-  border-bottom: 2px solid #FFE81F; /* Yellow border */
+  border-bottom: 2px solid #FFE81F;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
-  z-index: 1000; /* Ensure header is above other content */
+  z-index: 1000;
 }
 
 #header h1 {
   margin: 0;
-  font-size: 1.4em;
+  font-size: 1.3em; /* Slightly smaller */
   color: #FFE81F;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* Subtle text shadow */
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
 }
 
 /* Main Container Layout */
 #container {
   position: absolute;
-  top: 60px; /* Position below the header */
+  top: 60px;
   bottom: 0;
   left: 0;
   right: 0;
-  display: flex; /* Use flexbox for sidebar + content layout */
+  display: flex;
 }
 
 /* Sidebar Styles */
 #sidebar {
-  width: 300px; /* Fixed sidebar width */
-  background-color: #1e1e1e; /* Dark gray for sidebar */
-  padding: 15px;
+  width: 300px;
+  background-color: #1e1e1e;
+  padding: 10px; /* Reduced padding slightly */
   display: flex;
-  flex-direction: column; /* Stack elements vertically */
-  border-right: 1px solid #333; /* Subtle border */
-  overflow: hidden; /* Prevent sidebar itself from scrolling */
+  flex-direction: column;
+  border-right: 1px solid #333;
+  overflow: hidden;
+  transition: width 0.3s ease-in-out;
+  z-index: 500;
 }
 
-/* Scrollable content area within the sidebar */
-#sidebarContent {
-  overflow-y: auto; /* Allow vertical scrolling only for this section */
-  flex: 1; /* Allow this section to grow and fill available space */
-  padding-right: 5px; /* Space for scrollbar */
-  margin-bottom: 10px; /* Space above the reset button */
+/* Styles for the two main views within the sidebar */
+#mainSidebarContent, #deckManagementView {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow: hidden;
+    height: 100%;
+}
+
+/* Scrollable content area within each sidebar view */
+#sidebarContentScrollable, #deckManagementContentScrollable {
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 8px;
+  margin-bottom: 10px;
+}
+
+/* Styles for when Deck Management View is Active */
+body.deck-view-active #sidebar {
+    width: 100%;
+    border-right: none;
+}
+
+body.deck-view-active #content {
+    display: none;
 }
 
 /* Section Headers in Sidebar */
 #sidebar h2, #sidebar h3 {
     color: #FFE81F;
     border-bottom: 1px solid #444;
-    padding-bottom: 5px;
-    margin-top: 15px;
-    margin-bottom: 10px;
-    font-size: 1.1em;
+    padding-bottom: 4px; /* Reduced padding */
+    margin-top: 12px; /* Reduced margin */
+    margin-bottom: 8px; /* Reduced margin */
+    font-size: 1.0em; /* Reduced font size */
 }
 #sidebar h2:first-child, #sidebar h3:first-child {
-    margin-top: 0; /* Remove top margin for the first header */
+    margin-top: 0;
 }
 
 
-/* Card Style for Grouping */
+/* Card Style for Grouping (Used in Deck Management) */
 .card {
-  background-color: #2a2a2a; /* Darker card background */
-  padding: 12px;
-  margin-bottom: 15px;
-  border-radius: 5px; /* Rounded corners */
+  background-color: #2a2a2a;
+  padding: 10px; /* Reduced padding */
+  margin-bottom: 12px; /* Reduced margin */
+  border-radius: 5px;
   border: 1px solid #444;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Input and Select Styles */
-#deckManager {
-    display: flex; /* Align input and button horizontally */
-    gap: 5px; /* Space between input and button */
+#deckManager { /* Specific to deck management view */
+    display: flex;
+    gap: 8px;
+    align-items: center;
 }
 
-#deckManager input {
-    flex-grow: 1; /* Allow input to take available space */
-    /* width calculation removed, flex handles it */
+#deckManager input#deckInput {
+    flex-grow: 1;
+    width: auto;
+    margin-bottom: 0;
 }
+
+#deckManager button#addDeckBtn {
+    flex-grow: 0;
+    flex-shrink: 0;
+    width: auto;
+    padding: 8px 12px;
+    margin-bottom: 0;
+}
+
+/* Quick Add section */
+.quick-add {
+    display: flex;
+    gap: 5px; /* Reduced gap */
+    align-items: center;
+    margin-top: -5px;
+    margin-bottom: 12px; /* Reduced margin */
+}
+
+.quick-add input {
+    flex-grow: 1;
+    width: auto;
+    margin-bottom: 0;
+    font-size: 0.8em; /* Reduced font size */
+    padding: 5px 8px; /* Reduced padding */
+}
+
+/* *** UPDATED: Styles for icon button *** */
+.quick-add button.icon-btn {
+    flex-grow: 0;
+    flex-shrink: 0;
+    width: 28px; /* Fixed width for square-ish button */
+    height: 28px; /* Fixed height */
+    margin-bottom: 0;
+    padding: 0; /* Remove padding */
+    font-size: 1.2em; /* Make '+' icon larger */
+    line-height: 26px; /* Center '+' vertically */
+    text-align: center; /* Center '+' horizontally */
+}
+
 
 label {
-    display: block; /* Make labels take full width */
-    margin-bottom: 4px;
-    font-size: 0.9em;
-    color: #ccc; /* Lighter gray for labels */
+    display: block;
+    margin-bottom: 3px; /* Reduced margin */
+    font-size: 0.85em; /* Reduced font size */
+    color: #ccc;
 }
 
 select, input[type="text"], button {
+  /* General styles for all inputs/buttons */
   width: 100%;
-  padding: 8px 10px;
-  margin-bottom: 10px;
-  border: 1px solid #555; /* Slightly visible border */
+  padding: 7px 9px; /* Reduced padding */
+  margin-bottom: 8px; /* Reduced margin */
+  border: 1px solid #555;
   border-radius: 4px;
-  font-size: 0.9em;
-  background-color: #333; /* Dark input background */
-  color: #eee; /* Light text */
-  font-family: inherit; /* Use body font */
+  font-size: 0.85em; /* Reduced font size */
+  background-color: #333;
+  color: #eee;
+  font-family: inherit;
 }
 
 input[type="text"]::placeholder {
-    color: #888; /* Placeholder text color */
+    color: #888;
     opacity: 0.7;
 }
 
 /* Button Styles */
 button.generic {
-  background-color: #FFE81F; /* Yellow background */
-  color: #1a1a1a; /* Dark text for contrast */
+  background-color: #FFE81F;
+  color: #1a1a1a;
   cursor: pointer;
   font-weight: bold;
   border: none;
   transition: background-color 0.2s ease, transform 0.1s ease;
+  flex-shrink: 0;
 }
 
 button.generic:hover {
-  background-color: #fff352; /* Lighter yellow on hover */
+  background-color: #fff352;
 }
 
 button.generic:active {
-  background-color: #e6cf1a; /* Darker yellow when pressed */
-  transform: scale(0.98); /* Slight shrink effect */
+  background-color: #e6cf1a;
+  transform: scale(0.98);
 }
 
 /* Specific Button Styles */
-#resetBtn {
-  background-color: #c62828; /* Red for reset/danger */
-  color: #fff;
-  margin-top: auto; /* Push to the bottom */
+#resetBtn, #backToSetupBtn {
+  margin-top: auto;
   cursor: pointer;
   font-weight: bold;
   border: none;
   transition: background-color 0.2s ease, transform 0.1s ease;
-  flex-shrink: 0; /* Prevent button from shrinking if sidebar content is short */
+  flex-shrink: 0;
+  max-width: 180px; /* Reduced max width */
+  align-self: center;
+  /* Use general button padding/font-size */
 }
 
-#resetBtn:hover {
-  background-color: #e53935; /* Lighter red on hover */
+#resetBtn {
+  background-color: #c62828;
+  color: #fff;
 }
+#resetBtn:hover { background-color: #e53935; }
+#resetBtn:active { background-color: #b71c1c; transform: scale(0.98); }
 
-#resetBtn:active {
-  background-color: #b71c1c; /* Darker red when pressed */
-  transform: scale(0.98);
+#backToSetupBtn {
+  background-color: #444;
+  color: #fff;
 }
+#backToSetupBtn:hover { background-color: #555; }
+#backToSetupBtn:active { background-color: #333; transform: scale(0.98); }
 
-/* Deck List Styles */
+
+/* Deck List Styles (Now inside Deck Management View) */
 ul#deckList {
   list-style: none;
   padding: 0;
-  margin-top: 10px;
+  margin-top: 8px; /* Reduced margin */
+   max-width: 600px;
+   margin-left: auto;
+   margin-right: auto;
 }
 
 ul#deckList li {
-  background-color: #2f2f2f; /* Slightly lighter item background */
-  padding: 8px 10px;
-  margin-bottom: 8px;
+  background-color: #2f2f2f;
+  padding: 6px 8px; /* Reduced padding */
+  margin-bottom: 6px; /* Reduced margin */
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   border: 1px solid #4a4a4a;
-  font-size: 0.9em;
+  font-size: 0.85em; /* Reduced font size */
 }
 
-ul#deckList li div:first-child { /* Container for name/author */
+ul#deckList li div:first-child {
     flex-grow: 1;
-    margin-right: 10px;
-    overflow: hidden; /* Prevent long text overflow */
+    margin-right: 8px; /* Reduced margin */
+    overflow: hidden;
 }
 
 ul#deckList li strong {
-    color: #eee; /* Lighter color for deck name */
-    display: block; /* Ensure name is on its own line */
+    color: #eee;
+    display: block;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis; /* Add ... for long names */
+    text-overflow: ellipsis;
 }
 
 ul#deckList li .meta {
-  font-size: 0.85em;
-  color: #aaa; /* Gray for author */
+  font-size: 0.8em; /* Reduced font size */
+  color: #aaa;
    white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis; /* Add ... for long authors */
+    text-overflow: ellipsis;
 }
 
 ul#deckList li button {
-    width: auto; /* Allow buttons to size based on content */
-    padding: 4px 8px; /* Smaller padding for list buttons */
-    font-size: 0.8em;
-    margin-left: 5px; /* Space between buttons */
-    margin-bottom: 0; /* Override default bottom margin */
-    flex-shrink: 0; /* Prevent buttons from shrinking */
+    width: auto;
+    padding: 3px 6px; /* Reduced padding */
+    font-size: 0.8em; /* Reduced font size */
+    margin-left: 4px; /* Reduced margin */
+    margin-bottom: 0;
+    flex-shrink: 0;
 }
-
-/* Removed Preview Area Styles */
 
 /* Main Content Area Styles */
 #content {
-  flex: 1; /* Take remaining horizontal space */
-  background-color: #000; /* Match body background or choose another */
-  /* The BrowserView will be placed over this area by main.js */
-  position: relative; /* Needed for absolute positioning of BrowserView (handled by Electron) */
+  flex: 1;
+  background-color: #000;
+  position: relative;
+  display: block;
 }
 
 /* Scrollbar Styling (Optional, Webkit browsers) */
-#sidebarContent::-webkit-scrollbar {
+#sidebarContentScrollable::-webkit-scrollbar,
+#deckManagementContentScrollable::-webkit-scrollbar {
   width: 8px;
 }
 
-#sidebarContent::-webkit-scrollbar-track {
-  background: #1e1e1e; /* Match sidebar background */
+#sidebarContentScrollable::-webkit-scrollbar-track,
+#deckManagementContentScrollable::-webkit-scrollbar-track {
+  background: #1e1e1e;
   border-radius: 4px;
 }
 
-#sidebarContent::-webkit-scrollbar-thumb {
-  background-color: #555; /* Scrollbar handle color */
+#sidebarContentScrollable::-webkit-scrollbar-thumb,
+#deckManagementContentScrollable::-webkit-scrollbar-thumb {
+  background-color: #555;
   border-radius: 4px;
-  border: 2px solid #1e1e1e; /* Creates padding around thumb */
+  border: 2px solid #1e1e1e;
 }
 
-#sidebarContent::-webkit-scrollbar-thumb:hover {
-  background-color: #777; /* Handle color on hover */
+#sidebarContentScrollable::-webkit-scrollbar-thumb:hover,
+#deckManagementContentScrollable::-webkit-scrollbar-thumb:hover {
+  background-color: #777;
 }

@@ -11,8 +11,11 @@ contextBridge.exposeInMainWorld('api', {
   // Send: Send a message without expecting a direct reply (fire and forget)
   joinLobby: (url) => ipcRenderer.send('join-lobby', url),
   switchPlayer: () => ipcRenderer.send('switch-player'),
-  resetApp: () => ipcRenderer.send('reset-phase'), // Renamed for clarity, maps to 'reset-phase' in main
+  resetApp: () => ipcRenderer.send('reset-phase'),
   autoSetup: (p1Url, p2Url) => ipcRenderer.send('auto-setup', p1Url, p2Url),
+  // *** NEW: Messages for BrowserView visibility ***
+  hideBrowserView: () => ipcRenderer.send('hide-browser-view'),
+  showBrowserView: () => ipcRenderer.send('show-browser-view'),
 
   // On: Listen for messages initiated from the main process
   onLobbySuccess: (callback) => ipcRenderer.on('lobby-success', (event, ...args) => callback(...args)),
@@ -21,12 +24,10 @@ contextBridge.exposeInMainWorld('api', {
   onResetError: (callback) => ipcRenderer.on('reset-error', (event, ...args) => callback(...args)),
   onAutoSetupError: (callback) => ipcRenderer.on('auto-setup-error', (event, ...args) => callback(...args)),
   onTriggerSwitch: (callback) => ipcRenderer.on('trigger-switch', (event, ...args) => callback(...args)),
-  // Removed onPreview listener registration
 
   // Off: Function to remove listeners (good practice for cleanup)
-  // Note: These are generic functions; actual removal logic is in renderer.js
   removeListener: (channel, callback) => ipcRenderer.removeListener(channel, callback),
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
 });
 
-console.log('Preload script loaded (Preview functionality removed).');
+console.log('Preload script loaded (with BrowserView visibility API).');

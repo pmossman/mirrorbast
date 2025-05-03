@@ -1,7 +1,9 @@
 // main.js
 const { app, BrowserWindow, BrowserView, ipcMain, clipboard, globalShortcut } = require('electron');
 const path = require('path');
-const fetch = require('node-fetch'); // Ensure node-fetch@2 is installed
+// *** Ensure node-fetch is required correctly ***
+// Make sure you have run: npm install node-fetch@2
+const fetch = require('node-fetch');
 
 // Import the auto-setup logic
 const { performAutoSetup } = require('./auto-setup');
@@ -14,12 +16,14 @@ const SIDEBAR_WIDTH = 300;
 let mainWindow;
 let view1, view2;
 let currentView = 1; // 1 or 2 // This state is managed here
-// Removed previewTimeout
+let isBrowserViewVisible = true; // Track if BrowserView should be visible
 
 /**
  * Creates the main application window and sets up BrowserViews.
  */
 function createWindow() {
+  isBrowserViewVisible = true; // Reset on create
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -27,7 +31,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      backgroundThrottling: false // Keep this, might still be useful
+      backgroundThrottling: false
     },
     icon: path.join(__dirname, 'icon.png')
   });
@@ -56,7 +60,6 @@ function createWindow() {
   setTimeout(() => {
       if (mainWindow && view1 && !view1.webContents.isDestroyed()) {
           resizeView(view1);
-          // No preview to send
       }
   }, 150);
 
@@ -67,19 +70,23 @@ function createWindow() {
   view2.webContents.on('console-message', (e, level, message) => console.log('[VIEW2]', message));
 
   // Window Event Handling
-  mainWindow.on('resize', () => resizeView(currentView === 1 ? view1 : view2));
+  mainWindow.on('resize', () => {
+      if (isBrowserViewVisible) {
+          resizeView(currentView === 1 ? view1 : view2);
+      }
+  });
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
-/**
- * Registers the Spacebar global shortcut.
- */
+/** Registers the Spacebar global shortcut. */
 function registerSpaceShortcut() {
      if (!globalShortcut.isRegistered('Space')) {
       const ret = globalShortcut.register('Space', () => {
-        if (mainWindow?.webContents && !mainWindow.webContents.isDestroyed()) {
+        if (isBrowserViewVisible && mainWindow?.webContents && !mainWindow.webContents.isDestroyed()) {
             console.log("Spacebar pressed, sending trigger-switch");
             mainWindow.webContents.send('trigger-switch');
+        } else if (!isBrowserViewVisible) {
+            console.log("Spacebar pressed, but ignored (deck management view active).");
         } else {
             console.warn("Spacebar pressed, but mainWindow invalid. Unregistering shortcut.");
             unregisterSpaceShortcut();
@@ -90,9 +97,7 @@ function registerSpaceShortcut() {
     }
 }
 
-/**
- * Unregisters the Spacebar global shortcut.
- */
+/** Unregisters the Spacebar global shortcut. */
 function unregisterSpaceShortcut() {
      if (globalShortcut.isRegistered('Space')) {
       globalShortcut.unregister('Space');
@@ -101,12 +106,13 @@ function unregisterSpaceShortcut() {
 }
 
 
-/**
- * Resizes and positions the given BrowserView within the main window.
- * @param {BrowserView} view - The BrowserView to resize.
- */
+/** Resizes and positions the given BrowserView within the main window. */
 function resizeView(view) {
   if (!mainWindow || !view?.webContents || view.webContents.isDestroyed()) { return; }
+  if (!isBrowserViewVisible) {
+    //   console.log("Skipping resize, BrowserView is hidden."); // Reduce noise
+      return;
+  }
   try {
     const [width, height] = mainWindow.getContentSize();
     const viewWidth = Math.max(1, width - SIDEBAR_WIDTH);
@@ -118,12 +124,7 @@ function resizeView(view) {
   }
 }
 
-// Removed sendPreview function entirely
-
-/**
- * Updates the current active view state variable.
- * @param {number} viewNum - The view number (1 or 2) to set as active.
- */
+/** Updates the current active view state variable. */
 function setCurrentView(viewNum) {
     if (viewNum === 1 || viewNum === 2) { currentView = viewNum; }
     else { console.error(`Invalid view number passed to setCurrentView: ${viewNum}`); }
@@ -133,9 +134,14 @@ function setCurrentView(viewNum) {
 
 ipcMain.handle('read-clipboard', () => clipboard.readText());
 
+// *** Ensure fetch is available in this scope ***
 ipcMain.handle('fetch-metadata', async (_, url) => {
-  // (Metadata fetch logic remains the same)
   console.log(`Fetching metadata for: ${url}`);
+  // Check if fetch was correctly required
+  if (typeof fetch !== 'function') {
+      console.error("FATAL: fetch function is not available in main process. Is node-fetch installed and required?");
+      return { name: 'Setup Error', author: 'N/A' }; // Indicate a setup problem
+  }
   try {
     if (!url || !(url.startsWith('http://') || url.startsWith('https://'))) { throw new Error('Invalid URL (must start with http/https)'); }
     const response = await fetch(`https://karabast.net/api/swudbdeck?deckLink=${encodeURIComponent(url)}`, { method: 'GET', headers: { 'Accept': 'application/json', 'User-Agent': 'KarabastTesterApp/1.0' }, timeout: 15000 });
@@ -147,7 +153,6 @@ ipcMain.handle('fetch-metadata', async (_, url) => {
 });
 
 ipcMain.on('join-lobby', (event, url) => {
-  // (Manual join lobby logic remains the same)
   console.log(`Joining lobby (manual): ${url}`);
   if (!view2 || !view2.webContents || view2.webContents.isDestroyed()) { event.reply('lobby-error', 'P2 view unavailable.'); return; }
   if (!url || !url.includes('karabast.net/lobby')) { event.reply('lobby-error', 'Invalid lobby URL.'); return; }
@@ -157,27 +162,26 @@ ipcMain.on('join-lobby', (event, url) => {
       if (!view2 || view2.webContents.isDestroyed()) { console.warn("V2 destroyed during load."); return; }
       console.log('V2 finished loading lobby URL.');
       setCurrentView(2);
-      if (mainWindow) { mainWindow.setBrowserView(view2); resizeView(view2); }
+      if (mainWindow) {
+          isBrowserViewVisible = true; // Ensure visible
+          mainWindow.setBrowserView(view2);
+          resizeView(view2);
+      }
       event.reply('lobby-success');
-      // No preview to send
     })
     .catch(err => { console.error(`Error loading V2 URL ${url}:`, err); event.reply('lobby-error', `Failed load: ${err.message}`); });
 });
 
 ipcMain.on('switch-player', () => {
-  // Switch player logic
+  if (!isBrowserViewVisible) { console.log("Switch player ignored (view hidden)."); return; }
   const nextView = currentView === 1 ? 2 : 1;
   console.log(`Switching player from ${currentView} to ${nextView}`);
   const activeView = nextView === 1 ? view1 : view2;
-
   if (mainWindow && activeView?.webContents && !activeView.webContents.isDestroyed()) {
     setCurrentView(nextView);
     mainWindow.setBrowserView(activeView);
     resizeView(activeView);
-    // No preview to send
-  } else {
-    console.error(`Cannot switch player: MainWindow or target View ${nextView} is missing/invalid.`);
-  }
+  } else { console.error(`Cannot switch player: View ${nextView} invalid.`); }
 });
 
 ipcMain.on('reset-phase', (event) => {
@@ -187,16 +191,19 @@ ipcMain.on('reset-phase', (event) => {
       if (!view1Loaded || !view2Loaded) return;
       if (errors.length === 0) {
           console.log("Views reloaded."); setCurrentView(1);
-          if (mainWindow) { mainWindow.setBrowserView(view1); resizeView(view1); }
-          // No preview to send/clear
+          if (mainWindow) {
+              isBrowserViewVisible = true; // Ensure visible
+              mainWindow.setBrowserView(view1);
+              resizeView(view1);
+          }
           event.reply('reset-success');
       } else {
           console.error("Reset error:", errors.join('; '));
           if (mainWindow && view1?.webContents && !view1.webContents.isDestroyed() && !errors.some(e => e.includes("V1"))) {
               console.log("Setting V1 active despite reset errors."); setCurrentView(1);
+              isBrowserViewVisible = true;
               mainWindow.setBrowserView(view1); resizeView(view1);
           }
-          // No preview to clear
           event.reply('reset-error', `Failed reload: ${errors.join('; ')}`);
       }
   };
@@ -211,58 +218,48 @@ ipcMain.on('reset-phase', (event) => {
 // --- Auto Setup Handler ---
 ipcMain.on('auto-setup', async (event, p1Url, p2Url) => {
     console.log("Received 'auto-setup' request.");
-    // Ensure Player 1 view is active before starting
-    if (currentView !== 1) {
-        console.log("Switching to View 1 before auto-setup.");
+    if (currentView !== 1 || !isBrowserViewVisible) {
+        console.log("Switching to View 1 and ensuring visibility before auto-setup.");
         const targetView = view1;
          if (mainWindow && targetView?.webContents && !targetView.webContents.isDestroyed()) {
-            setCurrentView(1); mainWindow.setBrowserView(targetView); resizeView(targetView);
-            // No preview to send
-            await new Promise(r => setTimeout(r, 300)); // Delay after switch
+            setCurrentView(1);
+            if (!isBrowserViewVisible) { mainWindow.addBrowserView(targetView); isBrowserViewVisible = true; }
+            else { mainWindow.setBrowserView(targetView); }
+            resizeView(targetView);
+            await new Promise(r => setTimeout(r, 300));
         } else { event.reply('auto-setup-error', 'Cannot switch to P1 view.'); return; }
-    } else { console.log("Already on View 1."); }
-
-    // Create context for the auto-setup module (without preview functions)
-    const appContext = {
-        view1, view2, mainWindow, clipboard, setCurrentView, resizeView,
-        getCurrentView: () => currentView
-    };
-    // Call the imported function
+    } else { console.log("Already on View 1 and visible."); }
+    const appContext = { view1, view2, mainWindow, clipboard, setCurrentView, resizeView, getCurrentView: () => currentView };
     performAutoSetup(event, p1Url, p2Url, appContext);
+});
+
+// --- BrowserView Visibility Handlers ---
+ipcMain.on('hide-browser-view', (event) => {
+    const activeView = currentView === 1 ? view1 : view2;
+    if (mainWindow && activeView) {
+        console.log(`Hiding BrowserView ${currentView}`);
+        mainWindow.removeBrowserView(activeView);
+        isBrowserViewVisible = false;
+    } else { console.warn("Could not hide BrowserView."); }
+});
+
+ipcMain.on('show-browser-view', (event) => {
+    const activeView = currentView === 1 ? view1 : view2;
+    if (mainWindow && activeView) {
+        console.log(`Showing BrowserView ${currentView}`);
+        mainWindow.setBrowserView(activeView); // setBrowserView adds if not present
+        isBrowserViewVisible = true;
+        resizeView(activeView);
+    } else { console.warn("Could not show BrowserView."); }
 });
 
 
 // --- Electron App Lifecycle ---
-
 app.whenReady().then(createWindow);
-
-// Use app focus events for shortcut registration
 app.on('browser-window-focus', registerSpaceShortcut);
 app.on('browser-window-blur', unregisterSpaceShortcut);
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') { app.quit(); }
-});
-
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) { createWindow(); }
-  registerSpaceShortcut(); // Re-register on activation
-});
-
-// Ensure cleanup before quitting
-app.on('will-quit', () => {
-  unregisterSpaceShortcut();
-});
-
-// Optional: Handle process crashes
+app.on('window-all-closed', () => { if (process.platform !== 'darwin') { app.quit(); } });
+app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) { createWindow(); } registerSpaceShortcut(); });
+app.on('will-quit', () => { unregisterSpaceShortcut(); });
 app.on('gpu-process-crashed', (event, killed) => console.error(`GPU crash! Killed: ${killed}`));
-app.on('renderer-process-crashed', (event, webContents, killed) => {
-    console.error(`Renderer crash! URL: ${webContents?.getURL()}, Killed: ${killed}`);
-    const viewId = webContents?.id; let viewName = 'Unknown';
-    if (viewId) {
-        if (view1?.webContents.id === viewId) viewName = 'View 1';
-        else if (view2?.webContents.id === viewId) viewName = 'View 2';
-        else if (mainWindow?.webContents.id === viewId) viewName = 'Main Window';
-    }
-    console.error(`${viewName} renderer crashed.`);
-});
+app.on('renderer-process-crashed', (event, webContents, killed) => { /* ... error logging ... */ });

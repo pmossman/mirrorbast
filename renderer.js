@@ -1,26 +1,35 @@
 // renderer.js - Handles UI logic for index.html
 
-// Ensure the api object from preload.js is available
 if (window.api) {
   const {
     readClipboard, fetchMetadata, joinLobby, switchPlayer, resetApp, autoSetup,
+    hideBrowserView, showBrowserView, // Added new API functions
     onLobbySuccess, onLobbyError, onResetSuccess, onResetError, onAutoSetupError,
-    onTriggerSwitch, /* onPreview removed */ removeAllListeners
+    onTriggerSwitch, removeAllListeners
   } = window.api;
 
   // --- DOM Elements ---
-  const deckInputElement = document.getElementById('deckInput');
-  const addDeckBtn = document.getElementById('addDeckBtn');
+  const bodyElement = document.body; // Get body element for class toggling
+  // Main View Elements
+  const mainSidebarContent = document.getElementById('mainSidebarContent');
   const p1Select = document.getElementById('p1Select');
   const p2Select = document.getElementById('p2Select');
-  const p1Custom = document.getElementById('p1Custom');
-  const p2Custom = document.getElementById('p2Custom');
+  const p1UrlInput = document.getElementById('p1UrlInput'); // New input
+  const p1AddSelectBtn = document.getElementById('p1AddSelectBtn'); // New button
+  const p2UrlInput = document.getElementById('p2UrlInput'); // New input
+  const p2AddSelectBtn = document.getElementById('p2AddSelectBtn'); // New button
   const autoSetupBtn = document.getElementById('autoSetupBtn');
-  const deckListElement = document.getElementById('deckList');
   const joinBtn = document.getElementById('joinBtn');
   const switchBtn = document.getElementById('switchBtn');
-  // Removed previewContainer and previewImg elements
+  const manageDecksBtn = document.getElementById('manageDecksBtn');
   const resetBtn = document.getElementById('resetBtn');
+
+  // Deck Management View Elements
+  const deckManagementView = document.getElementById('deckManagementView');
+  const deckInputElement = document.getElementById('deckInput'); // Now inside deck management view
+  const addDeckBtn = document.getElementById('addDeckBtn');       // Now inside deck management view
+  const deckListElement = document.getElementById('deckList');     // Now inside deck management view
+  const backToSetupBtn = document.getElementById('backToSetupBtn');
 
   // --- State ---
   const DECK_STORAGE_KEY = 'savedDecks';
@@ -44,8 +53,8 @@ if (window.api) {
     catch (error) { console.error("Error saving decks:", error); alert("Error saving deck list."); }
   }
 
-  /** Fetches metadata, adds a deck to the list, saves, and updates UI. */
-  async function handleAddDeck() {
+  /** Fetches metadata, adds a deck to the list, saves, and updates UI (list only). */
+  async function handleAddDeck() { // Used only in Manage Decks view now
     const url = deckInputElement.value.trim();
     if (!url) { alert("Please enter a deck URL."); return; }
     if (savedDecks.some(deck => deck.url === url)) { alert("This deck URL is already saved."); deckInputElement.value = ''; return; }
@@ -55,19 +64,22 @@ if (window.api) {
       console.log(`Fetching metadata: ${url}`);
       const metadata = await fetchMetadata(url);
       if (metadata && metadata.name && metadata.name !== 'Fetch Error' && metadata.name !== 'Invalid Metadata') {
-         savedDecks.push({ url, ...metadata }); saveDecks(); renderDeckList(); populateSelects(); deckInputElement.value = '';
+         savedDecks.push({ url, ...metadata }); saveDecks();
+         renderDeckList(); // Update the list in the management view
+         populateSelects(); // Update the dropdowns in the main view
+         deckInputElement.value = ''; // Clear input field on success
          console.log(`Deck "${metadata.name}" added.`);
       } else {
          alert(`Could not fetch valid metadata. Error: ${metadata?.name || 'Unknown'}. Check link.`);
          console.warn("Metadata fetch failed:", url, "Received:", metadata);
       }
     } catch (error) { console.error("Error adding deck:", error); alert(`Failed add deck: ${error.message}`); }
-    finally { addDeckBtn.textContent = 'Add'; addDeckBtn.disabled = false; }
+    finally { addDeckBtn.textContent = 'Add Deck'; addDeckBtn.disabled = false; } // Restore button text
   }
 
-  /** Renders the list of saved decks in the UI. */
+  /** Renders the list of saved decks in the Deck Management View. */
   function renderDeckList() {
-    deckListElement.innerHTML = '';
+    deckListElement.innerHTML = ''; // Clear existing list
     if (savedDecks.length === 0) {
         const li = document.createElement('li'); li.textContent = 'No decks saved yet.'; li.style.fontStyle = 'italic'; li.style.color = '#888';
         deckListElement.appendChild(li); return;
@@ -78,59 +90,150 @@ if (window.api) {
       const nameStrong = document.createElement('strong'); nameStrong.textContent = deck.name || 'Unnamed'; nameStrong.title = deck.name || 'Unnamed';
       const authorSpan = document.createElement('span'); authorSpan.className = 'meta'; authorSpan.textContent = `by ${deck.author || 'Unknown'}`; authorSpan.title = `by ${deck.author || 'Unknown'}`;
       infoDiv.append(nameStrong, document.createElement('br'), authorSpan);
-
       const buttonsDiv = document.createElement('div'); buttonsDiv.style.display = 'flex'; buttonsDiv.style.flexShrink = '0'; buttonsDiv.style.gap = '4px';
-      const btnCopy = document.createElement('button'); btnCopy.textContent = 'Copy'; btnCopy.className = 'generic'; btnCopy.title = `Copy URL: ${deck.url}`;
-      btnCopy.onclick = (e) => { e.stopPropagation(); navigator.clipboard.writeText(deck.url).then(() => { console.log(`Copied: ${deck.url}`); const o = btnCopy.textContent; btnCopy.textContent = 'Copied!'; setTimeout(() => { btnCopy.textContent = o; }, 1500); }).catch(err => console.error('Copy fail:', err)); };
       const btnRefresh = document.createElement('button'); btnRefresh.textContent = 'Refresh'; btnRefresh.className = 'generic'; btnRefresh.title = 'Refresh metadata';
-      btnRefresh.onclick = async (e) => {
-        e.stopPropagation(); btnRefresh.textContent = '...'; btnRefresh.disabled = true;
-        try {
-            const newMeta = await fetchMetadata(deck.url);
-             if (newMeta && newMeta.name && newMeta.name !== 'Fetch Error' && newMeta.name !== 'Invalid Metadata') {
-                savedDecks[index] = { url: deck.url, ...newMeta }; saveDecks(); renderDeckList(); populateSelects(); console.log(`Refreshed: ${newMeta.name}`);
-             } else { alert(`Refresh fail: ${newMeta?.name || 'Unknown'}`); console.warn("Refresh fail:", deck.url, newMeta); btnRefresh.textContent = 'Refresh'; btnRefresh.disabled = false; }
-        } catch (error) { console.error("Refresh error:", error); alert(`Refresh error: ${error.message}`); btnRefresh.textContent = 'Refresh'; btnRefresh.disabled = false; }
-      };
+      btnRefresh.onclick = async (e) => { /* ... refresh logic ... */ }; // Keep refresh logic
       const btnDelete = document.createElement('button'); btnDelete.textContent = 'Delete'; btnDelete.className = 'generic'; btnDelete.style.backgroundColor = '#a04040'; btnDelete.title = 'Delete deck';
-      btnDelete.onclick = (e) => { e.stopPropagation(); if (confirm(`Delete "${deck.name || 'this deck'}"?`)) { savedDecks.splice(index, 1); saveDecks(); renderDeckList(); populateSelects(); console.log(`Deleted: ${deck.name || deck.url}`); } };
-      buttonsDiv.append(btnCopy, btnRefresh, btnDelete);
+      btnDelete.onclick = (e) => { /* ... delete logic ... */ }; // Keep delete logic
+      buttonsDiv.append(btnRefresh, btnDelete);
       li.append(infoDiv, buttonsDiv);
       deckListElement.appendChild(li);
     });
+     // Re-attach refresh/delete logic inside the loop as elements are recreated
+     deckListElement.querySelectorAll('li').forEach((li, index) => {
+        const deck = savedDecks[index];
+        const btnRefresh = li.querySelector('button:nth-of-type(1)');
+        const btnDelete = li.querySelector('button:nth-of-type(2)');
+
+        if (btnRefresh) {
+            btnRefresh.onclick = async (e) => {
+                e.stopPropagation(); btnRefresh.textContent = '...'; btnRefresh.disabled = true;
+                try {
+                    const newMeta = await fetchMetadata(deck.url);
+                    if (newMeta && newMeta.name && newMeta.name !== 'Fetch Error' && newMeta.name !== 'Invalid Metadata') {
+                        savedDecks[index] = { url: deck.url, ...newMeta }; saveDecks(); renderDeckList(); populateSelects(); console.log(`Refreshed: ${newMeta.name}`);
+                    } else { alert(`Refresh fail: ${newMeta?.name || 'Unknown'}`); console.warn("Refresh fail:", deck.url, newMeta); btnRefresh.textContent = 'Refresh'; btnRefresh.disabled = false; }
+                } catch (error) { console.error("Refresh error:", error); alert(`Refresh error: ${error.message}`); btnRefresh.textContent = 'Refresh'; btnRefresh.disabled = false; }
+            };
+        }
+        if (btnDelete) {
+            btnDelete.onclick = (e) => { e.stopPropagation(); if (confirm(`Delete "${deck.name || 'this deck'}"?`)) { savedDecks.splice(index, 1); saveDecks(); renderDeckList(); populateSelects(); console.log(`Deleted: ${deck.name || deck.url}`); } };
+        }
+    });
   }
 
-  /** Populates the Player 1 and Player 2 select dropdowns. */
+  /** Populates the Player 1 and Player 2 select dropdowns in the Main View. */
   function populateSelects() {
     const currentP1Value = p1Select.value; const currentP2Value = p2Select.value;
     [p1Select, p2Select].forEach(select => {
-      select.innerHTML = '';
-      if (savedDecks.length === 0) { const opt = document.createElement('option'); opt.value = ''; opt.textContent = 'Add decks first'; opt.disabled = true; select.append(opt); }
-      else { const opt = document.createElement('option'); opt.value = ''; opt.textContent = 'Select Saved Deck...'; select.append(opt); }
-      savedDecks.forEach(deck => { const opt = document.createElement('option'); opt.value = deck.url; opt.textContent = deck.name || 'Unnamed'; opt.title = `${deck.name || 'Unnamed'} (${deck.author || 'Unknown'})`; select.append(opt); });
-      const customOpt = document.createElement('option'); customOpt.value = 'custom'; customOpt.textContent = 'Custom URL...'; select.append(customOpt);
+      select.innerHTML = ''; // Clear existing options
+      // Add a "Select..." option first
+      const defaultOpt = document.createElement('option');
+      defaultOpt.value = ''; // Important: value is empty string
+      defaultOpt.textContent = 'Select Deck...';
+      select.append(defaultOpt);
+
+      // Add options for each saved deck
+      savedDecks.forEach(deck => {
+        const opt = document.createElement('option');
+        opt.value = deck.url;
+        opt.textContent = deck.name || 'Unnamed Deck';
+        opt.title = `${deck.name || 'Unnamed Deck'} (${deck.author || 'Unknown'})`; // Tooltip
+        select.append(opt);
+      });
+      // Removed "Custom URL" option
     });
-    p1Select.value = savedDecks.some(d => d.url === currentP1Value) ? currentP1Value : (currentP1Value === 'custom' ? 'custom' : '');
-    p2Select.value = savedDecks.some(d => d.url === currentP2Value) ? currentP2Value : (currentP2Value === 'custom' ? 'custom' : '');
-    p1Select.dispatchEvent(new Event('change')); p2Select.dispatchEvent(new Event('change'));
+    // Try to restore previous selection if still valid, otherwise default to "Select..." option
+    p1Select.value = savedDecks.some(d => d.url === currentP1Value) ? currentP1Value : '';
+    p2Select.value = savedDecks.some(d => d.url === currentP2Value) ? currentP2Value : '';
   }
 
-  // Removed updatePreview function
+  // --- UI View Switching ---
+
+  /** Shows the main setup/gameplay sidebar view and the BrowserView. */
+  function showMainSidebarView() {
+      bodyElement.classList.remove('deck-view-active'); // Remove class from body
+      deckManagementView.style.display = 'none';
+      mainSidebarContent.style.display = 'flex'; // Use 'flex' since it's a flex container
+      showBrowserView(); // Tell main process to show the BrowserView
+      console.log("Switched to Main Sidebar View");
+  }
+
+  /** Shows the deck management sidebar view (full window) and hides the BrowserView. */
+  function showDeckManagementView() {
+      hideBrowserView(); // Tell main process to hide the BrowserView
+      bodyElement.classList.add('deck-view-active'); // Add class to body
+      mainSidebarContent.style.display = 'none';
+      deckManagementView.style.display = 'flex'; // Use 'flex' since it's a flex container
+      renderDeckList(); // Re-render the list when showing the view
+      console.log("Switched to Deck Management View");
+  }
+
 
   // --- Event Handlers ---
 
+ /**
+   * Handles adding a URL from the quick-add input, saving it,
+   * and selecting it in the specified dropdown.
+   * @param {HTMLInputElement} urlInputEl - The input element containing the URL.
+   * @param {HTMLSelectElement} targetSelectEl - The dropdown to select the deck in.
+   * @param {HTMLButtonElement} addButtonEl - The button that was clicked.
+   */
+  async function handleAddAndSelectDeck(urlInputEl, targetSelectEl, addButtonEl) {
+      const url = urlInputEl.value.trim();
+      if (!url) { alert("Please paste a deck URL."); return; }
+
+      const originalButtonText = addButtonEl.textContent;
+      addButtonEl.textContent = 'Adding...';
+      addButtonEl.disabled = true;
+
+      try {
+          // Check if already saved
+          const existingDeck = savedDecks.find(deck => deck.url === url);
+          if (existingDeck) {
+              console.log("Deck already saved, selecting it.");
+              populateSelects(); // Ensure dropdown is up-to-date
+              targetSelectEl.value = url; // Select the existing deck
+              urlInputEl.value = ''; // Clear input
+          } else {
+              // Not saved, fetch and add
+              console.log(`Fetching metadata for quick add: ${url}`);
+              const metadata = await fetchMetadata(url);
+              if (metadata && metadata.name && metadata.name !== 'Fetch Error' && metadata.name !== 'Invalid Metadata') {
+                  savedDecks.push({ url, ...metadata });
+                  saveDecks();
+                  populateSelects(); // Update dropdowns
+                  targetSelectEl.value = url; // Select the newly added deck
+                  urlInputEl.value = ''; // Clear input
+                  console.log(`Deck "${metadata.name}" added and selected.`);
+              } else {
+                  alert(`Could not fetch valid metadata. Error: ${metadata?.name || 'Unknown'}. Check link.`);
+                  console.warn("Metadata fetch failed:", url, "Received:", metadata);
+              }
+          }
+      } catch (error) {
+          console.error("Error adding/selecting deck:", error);
+          alert(`Failed add/select deck: ${error.message}`);
+      } finally {
+          addButtonEl.textContent = originalButtonText;
+          addButtonEl.disabled = false;
+      }
+  }
+
+
   /** Handles the click event for the Auto Setup button. */
   function handleAutoSetup() {
-    const p1Value = p1Select.value; const p2Value = p2Select.value;
-    const p1Url = p1Value === 'custom' ? p1Custom.value.trim() : p1Value;
-    const p2Url = p2Value === 'custom' ? p2Custom.value.trim() : p2Value;
-    if (!p1Url || p1Value === '') { alert("Select/enter P1 deck URL."); p1Select.focus(); return; }
-    if (!p2Url || p2Value === '') { alert("Select/enter P2 deck URL."); p2Select.focus(); return; }
-    if (p1Value === 'custom' && !p1Custom.value.trim()) { alert("Enter custom P1 URL."); p1Custom.focus(); return; }
-    if (p2Value === 'custom' && !p2Custom.value.trim()) { alert("Enter custom P2 URL."); p2Custom.focus(); return; }
+    const p1Url = p1Select.value; // Directly use selected value
+    const p2Url = p2Select.value; // Directly use selected value
+
+    // Validate selections
+    if (!p1Url) { alert("Please select a deck for Player 1."); p1Select.focus(); return; }
+    if (!p2Url) { alert("Please select a deck for Player 2."); p2Select.focus(); return; }
+
     console.log(`Starting auto-setup: P1=${p1Url}, P2=${p2Url}`);
     autoSetupBtn.textContent = 'Setting Up...'; autoSetupBtn.disabled = true;
-    joinBtn.disabled = true; switchBtn.disabled = true; resetBtn.disabled = true;
+    joinBtn.disabled = true; switchBtn.disabled = true; resetBtn.disabled = true; manageDecksBtn.disabled = true;
+    p1AddSelectBtn.disabled = true; p2AddSelectBtn.disabled = true; // Disable quick add buttons too
     autoSetup(p1Url, p2Url);
   }
 
@@ -142,7 +245,8 @@ if (window.api) {
          if (confirm(`Join lobby?\n\n${url}`)) {
             console.log(`Joining lobby: ${url}`);
             joinBtn.textContent = 'Joining...'; joinBtn.disabled = true;
-            autoSetupBtn.disabled = true; switchBtn.disabled = true; resetBtn.disabled = true;
+            autoSetupBtn.disabled = true; switchBtn.disabled = true; resetBtn.disabled = true; manageDecksBtn.disabled = true;
+            p1AddSelectBtn.disabled = true; p2AddSelectBtn.disabled = true;
             joinLobby(url);
          }
       } else { alert("No valid Karabast lobby link in clipboard."); }
@@ -151,10 +255,14 @@ if (window.api) {
 
    /** Handles the click event for the Reset button. */
   function handleReset() {
+      // Reset should only be available from the main view
+      if (bodyElement.classList.contains('deck-view-active')) return;
+
       if (confirm('Reset both player views to Karabast home?')) {
           console.log('Requesting reset...');
           resetBtn.textContent = 'Resetting...'; resetBtn.disabled = true;
-          autoSetupBtn.disabled = true; joinBtn.disabled = true; switchBtn.disabled = true;
+          autoSetupBtn.disabled = true; joinBtn.disabled = true; switchBtn.disabled = true; manageDecksBtn.disabled = true;
+          p1AddSelectBtn.disabled = true; p2AddSelectBtn.disabled = true;
           resetApp();
       }
   }
@@ -166,7 +274,9 @@ if (window.api) {
     console.log("Setup complete.");
     autoSetupBtn.textContent = 'Auto Setup Game'; autoSetupBtn.disabled = false;
     joinBtn.textContent = 'Join Lobby (Paste Link First)'; joinBtn.disabled = false;
-    switchBtn.disabled = false; resetBtn.disabled = false; resetBtn.textContent = 'Reset Views';
+    switchBtn.disabled = false; resetBtn.disabled = false; resetBtn.textContent = 'Reset Views'; manageDecksBtn.disabled = false;
+    p1AddSelectBtn.disabled = false; p2AddSelectBtn.disabled = false;
+    showMainSidebarView();
   }
 
   /** Handles errors during lobby join or auto-setup. */
@@ -174,29 +284,38 @@ if (window.api) {
     console.error("Setup Error:", errorMessage); alert(`Setup failed: ${errorMessage}`);
     autoSetupBtn.textContent = 'Auto Setup Game'; autoSetupBtn.disabled = false;
     joinBtn.textContent = 'Join Lobby (Paste Link First)'; joinBtn.disabled = false;
-    switchBtn.disabled = false; resetBtn.disabled = false; resetBtn.textContent = 'Reset Views';
+    switchBtn.disabled = false; resetBtn.disabled = false; resetBtn.textContent = 'Reset Views'; manageDecksBtn.disabled = false;
+    p1AddSelectBtn.disabled = false; p2AddSelectBtn.disabled = false;
+    showMainSidebarView();
   }
 
    /** Handles successful application reset. */
    function onResetComplete() {
        console.log("Reset successful.");
-       // No preview to clear
        resetBtn.textContent = 'Reset Views'; resetBtn.disabled = false;
-       autoSetupBtn.disabled = false; joinBtn.disabled = false; switchBtn.disabled = false;
+       autoSetupBtn.disabled = false; joinBtn.disabled = false; switchBtn.disabled = false; manageDecksBtn.disabled = false;
+       p1AddSelectBtn.disabled = false; p2AddSelectBtn.disabled = false;
+       showMainSidebarView(); // Ensure main view is shown
    }
 
    /** Handles errors during application reset. */
    function onResetFail(errorMessage) {
        console.error("Reset Error:", errorMessage); alert(`Reset failed: ${errorMessage}`);
-       // No preview to clear
        resetBtn.textContent = 'Reset Views'; resetBtn.disabled = false;
-       autoSetupBtn.disabled = false; joinBtn.disabled = false; switchBtn.disabled = false;
+       autoSetupBtn.disabled = false; joinBtn.disabled = false; switchBtn.disabled = false; manageDecksBtn.disabled = false;
+       p1AddSelectBtn.disabled = false; p2AddSelectBtn.disabled = false;
+       showMainSidebarView(); // Ensure main view is shown
    }
 
    /** Handles the trigger to switch players (e.g., from Spacebar). */
    function handleTriggerSwitch() {
-       console.log("Renderer: Trigger switch received.");
-       switchPlayer();
+       // Only switch if not in deck management view
+       if (!bodyElement.classList.contains('deck-view-active')) {
+           console.log("Renderer: Trigger switch received.");
+           switchPlayer();
+       } else {
+           console.log("Renderer: Trigger switch ignored (deck view active).");
+       }
    }
 
 
@@ -204,13 +323,19 @@ if (window.api) {
 
   /** Sets up all event listeners for UI elements and IPC events. */
   function setupEventListeners() {
-    addDeckBtn.addEventListener('click', handleAddDeck);
+    // Main View Buttons / Inputs
     autoSetupBtn.addEventListener('click', handleAutoSetup);
     joinBtn.addEventListener('click', handleJoinLobby);
     switchBtn.addEventListener('click', () => switchPlayer());
     resetBtn.addEventListener('click', handleReset);
-    p1Select.addEventListener('change', () => { p1Custom.style.display = p1Select.value === 'custom' ? 'block' : 'none'; if(p1Select.value === 'custom') p1Custom.focus(); });
-    p2Select.addEventListener('change', () => { p2Custom.style.display = p2Select.value === 'custom' ? 'block' : 'none'; if(p2Select.value === 'custom') p2Custom.focus(); });
+    manageDecksBtn.addEventListener('click', showDeckManagementView);
+    // New Quick Add Buttons
+    p1AddSelectBtn.addEventListener('click', () => handleAddAndSelectDeck(p1UrlInput, p1Select, p1AddSelectBtn));
+    p2AddSelectBtn.addEventListener('click', () => handleAddAndSelectDeck(p2UrlInput, p2Select, p2AddSelectBtn));
+
+    // Deck Management View Buttons
+    addDeckBtn.addEventListener('click', handleAddDeck);
+    backToSetupBtn.addEventListener('click', showMainSidebarView);
 
     // IPC Listeners
     onLobbySuccess(onGameReady);
@@ -218,17 +343,15 @@ if (window.api) {
     onAutoSetupError(onSetupError);
     onResetSuccess(onResetComplete);
     onResetError(onResetFail);
-    // Removed onPreview listener
     onTriggerSwitch(handleTriggerSwitch);
 
      window.addEventListener('beforeunload', () => {
          console.log("Removing IPC listeners.");
          if (removeAllListeners) {
-            try { // Remove only listeners that were added
+            try {
                 removeAllListeners('lobby-success'); removeAllListeners('lobby-error');
                 removeAllListeners('auto-setup-error'); removeAllListeners('reset-success');
                 removeAllListeners('reset-error'); removeAllListeners('trigger-switch');
-                // Removed 'preview-updated' from cleanup
             } catch (e) { console.error("Error removing listeners:", e); }
          }
      });
@@ -238,8 +361,10 @@ if (window.api) {
   /** Initializes the renderer application. */
   function initialize() {
     console.log("Initializing renderer...");
-    loadDecks(); renderDeckList(); populateSelects(); setupEventListeners();
-    // No initial preview hiding needed as element is removed from HTML
+    loadDecks();
+    populateSelects(); // Populate dropdowns initially
+    setupEventListeners();
+    showMainSidebarView(); // Ensure the main view is visible initially
     resetBtn.textContent = 'Reset Views';
     console.log("Renderer initialization complete.");
   }
