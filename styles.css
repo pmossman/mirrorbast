@@ -99,6 +99,13 @@ html {
 #loadingSpinner.visible {
   opacity: 1; /* Show when class is added */
 }
+#loadingText {
+  position: absolute;
+  right: 50px; /* Position on the right */
+  top: 50%;
+  transform: translateY(-50%);
+  transition: opacity 0.2s ease-in-out;
+}
 
 @keyframes spin {
   to {

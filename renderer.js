@@ -30,7 +30,8 @@ if (window.api) {
   const contentElement = document.getElementById("content");
   const sidebarElement = document.getElementById("sidebar");
   const sidebarToggleBtn = document.getElementById("sidebarToggleBtn");
-  const loadingSpinner = document.getElementById("loadingSpinner"); // *** NEW Spinner ***
+  const loadingSpinner = document.getElementById("loadingSpinner");
+  const loadingText = document.getElementById("loadingText");
   // Main View Elements
   const mainSidebarContent = document.getElementById("mainSidebarContent");
   const p1Select = document.getElementById("p1Select");
@@ -356,16 +357,18 @@ if (window.api) {
   function handleShowSpinner() {
     if (!loadingSpinner)
       return console.warn("[Renderer] Spinner element not found.");
-    console.log("[Renderer] Showing spinner."); // LOGGING
+    console.log("[Renderer] Showing spinner.");
     loadingSpinner.classList.add("visible");
+    loadingText.textContent = "Please Wait...";
   }
 
   /** Hides the loading spinner */
   function handleHideSpinner() {
     if (!loadingSpinner)
       return console.warn("[Renderer] Spinner element not found.");
-    console.log("[Renderer] Hiding spinner."); // LOGGING
+    console.log("[Renderer] Hiding spinner.");
     loadingSpinner.classList.remove("visible");
+    loadingText.textContent = "";
   }
 
   // --- Event Handlers ---
