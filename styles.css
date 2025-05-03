@@ -154,6 +154,7 @@ button.generic:active {
   font-weight: bold;
   border: none;
   transition: background-color 0.2s ease, transform 0.1s ease;
+  flex-shrink: 0; /* Prevent button from shrinking if sidebar content is short */
 }
 
 #resetBtn:hover {
@@ -184,7 +185,7 @@ ul#deckList li {
   font-size: 0.9em;
 }
 
-ul#deckList li div { /* Container for name/author */
+ul#deckList li div:first-child { /* Container for name/author */
     flex-grow: 1;
     margin-right: 10px;
     overflow: hidden; /* Prevent long text overflow */
@@ -215,32 +216,7 @@ ul#deckList li button {
     flex-shrink: 0; /* Prevent buttons from shrinking */
 }
 
-/* Preview Area Styles */
-#previewContainer {
-  margin-top: 15px; /* Space above the preview */
-  margin-bottom: 15px;
-  padding: 10px;
-  background-color: #2a2a2a; /* Consistent card background */
-  border-radius: 5px;
-  border: 1px solid #444;
-}
-
-#previewContainer strong {
-  display: block;
-  margin-bottom: 8px;
-  color: #ccc;
-  font-size: 0.9em;
-  text-align: center;
-}
-
-#previewImg {
-  width: 100%;
-  border: 1px solid #555; /* Border around the image */
-  border-radius: 4px;
-  display: block; /* Remove extra space below image */
-  background-color: #111; /* Dark background for empty/loading state */
-  min-height: 100px; /* Give it some size even when empty */
-}
+/* Removed Preview Area Styles */
 
 /* Main Content Area Styles */
 #content {

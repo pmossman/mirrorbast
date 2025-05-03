@@ -106,25 +106,24 @@ const findAndClickElementByText = async (view, elementText, stepDescription, sel
 * @param {Electron.IpcMainEvent} event - The IPC event object for replying.
 * @param {string} p1Url - The deck URL for Player 1.
 * @param {string} p2Url - The deck URL for Player 2.
-* @param {object} context - The application context containing views, window, clipboard, and callbacks.
-* @param {BrowserView} context.view1 - Player 1's BrowserView.
-* @param {BrowserView} context.view2 - Player 2's BrowserView.
-* @param {BrowserWindow} context.mainWindow - The main application window.
-* @param {Electron.Clipboard} context.clipboard - Electron's clipboard module.
-* @param {function(number):void} context.setCurrentView - Callback to update the active view state in main.js.
-* @param {function(BrowserView):void} context.resizeView - Callback to resize a view.
-* @param {function():void} context.sendPreview - Callback to update the opponent preview.
-* @param {function():number} context.getCurrentView - Callback to get the current view state from main.js.
+* @param {object} context - The application context.
+* @param {BrowserView} context.view1
+* @param {BrowserView} context.view2
+* @param {BrowserWindow} context.mainWindow
+* @param {Electron.Clipboard} context.clipboard
+* @param {function(number):void} context.setCurrentView
+* @param {function(BrowserView):void} context.resizeView
+* @param {function():number} context.getCurrentView
 */
 async function performAutoSetup(event, p1Url, p2Url, context) {
   console.log('Starting auto-setup...');
   appContext = context; // Set the context for helpers
-  const { view1, view2, mainWindow, clipboard, setCurrentView, resizeView, sendPreview, getCurrentView } = appContext;
+  // Destructure context, excluding sendPreview
+  const { view1, view2, mainWindow, clipboard, setCurrentView, resizeView, getCurrentView } = appContext;
 
-  // Initial check for view validity
-  if (!view1 || !view1.webContents || view1.webContents.isDestroyed() ||
-      !view2 || !view2.webContents || view2.webContents.isDestroyed()) {
-      console.error("Auto-setup failed: One or both views are not available at start.");
+  if (!view1?.webContents || view1.webContents.isDestroyed() ||
+      !view2?.webContents || view2.webContents.isDestroyed()) {
+      console.error("Auto-setup failed: Views unavailable at start.");
       event.reply('auto-setup-error', 'Required browser views are not initialized.');
       return;
   }
@@ -138,7 +137,7 @@ async function performAutoSetup(event, p1Url, p2Url, context) {
       } else { console.log('P1 already at karabast.net.'); }
 
       console.log('AutoSetup Step 2: Clicking "Create Lobby"');
-      await findAndClickElementByText(view1, 'Create Lobby', 'Click Create Lobby P1', 'button', 7000); // Specify selector
+      await findAndClickElementByText(view1, 'Create Lobby', 'Click Create Lobby P1', 'button', 7000);
       await delay(600);
 
       console.log('AutoSetup Step 3: Selecting "Private"');
@@ -150,7 +149,7 @@ async function performAutoSetup(event, p1Url, p2Url, context) {
       await delay(300);
 
       console.log('AutoSetup Step 5: Clicking "Create Game"');
-      await findAndClickElementByText(view1, 'Create Game', 'Click Create Game P1', 'button'); // Specify selector
+      await findAndClickElementByText(view1, 'Create Game', 'Click Create Game P1', 'button');
       await delay(500);
 
       // --- Wait for and Extract Invite Link ---
@@ -184,11 +183,10 @@ async function performAutoSetup(event, p1Url, p2Url, context) {
       console.log("Switching to View 2 after lobby load");
       setCurrentView(2);
       if (mainWindow) { mainWindow.setBrowserView(view2); resizeView(view2); }
-      sendPreview();
+      // No preview to send
       await delay(700);
 
       console.log('AutoSetup Step 8: Clicking "Import New Deck" for P2');
-      // *** UPDATED: Use generalized helper with 'p, button' selector ***
       await findAndClickElementByText(view2, 'Import New Deck', 'Click Import New Deck P2', 'p, button', 7000);
       await delay(600);
 
@@ -208,30 +206,30 @@ async function performAutoSetup(event, p1Url, p2Url, context) {
 
       console.log('AutoSetup Step 10: Filling P2 deck input');
       await safeExecuteJavaScript(view2, ` (async () => { const findInput = () => Array.from(document.querySelectorAll('input[type=text]')).filter(el => el.offsetParent !== null && !el.readOnly && !el.disabled && !el.placeholder).find(el => !el.value); let input = findInput(); if (input) { const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; setter.call(input, ${JSON.stringify(p2Url)}); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); console.log('P2 deck URL set.'); return true; } else { console.log('P2 input (no placeholder) retry...'); await new Promise(r => setTimeout(r, 500)); input = findInput(); if (input) { const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; setter.call(input, ${JSON.stringify(p2Url)}); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); console.log('P2 deck URL set on retry.'); return true; } else { console.error('P2 empty input (no placeholder) not found'); throw new Error('P2 empty input (no placeholder) not found'); } } })(); `, 'Fill P2 Deck Input (No Placeholder)');
-      await delay(500); // Increased delay after filling
+      await delay(500);
 
       // --- Remaining Steps (11-15) ---
 
       console.log('AutoSetup Step 11: Clicking "Import Deck" button in P2 View');
-      await findAndClickElementByText(view2, 'Import Deck', 'Click Import Deck Button P2', 'button', 6000); // Specify selector
-      await delay(1200); // Increased delay after import click
+      await findAndClickElementByText(view2, 'Import Deck', 'Click Import Deck Button P2', 'button', 6000);
+      await delay(1200);
 
       console.log('AutoSetup Step 12: Clicking "Ready" button in P2 View');
-      await findAndClickElementByText(view2, 'Ready', 'Click Ready Button P2', 'button'); // Specify selector
+      await findAndClickElementByText(view2, 'Ready', 'Click Ready Button P2', 'button');
       await delay(500);
 
       console.log('AutoSetup Step 13: Switching back to P1 View');
       setCurrentView(1);
       if (mainWindow) { mainWindow.setBrowserView(view1); resizeView(view1); }
-      sendPreview();
+      // No preview to send
       await delay(700);
 
       console.log('AutoSetup Step 14: Clicking "Ready" button in P1 View');
-      await findAndClickElementByText(view1, 'Ready', 'Click Ready Button P1', 'button'); // Specify selector
+      await findAndClickElementByText(view1, 'Ready', 'Click Ready Button P1', 'button');
       await delay(500);
 
       console.log('AutoSetup Step 15: Clicking "Start Game" button in P1 View');
-      await findAndClickElementByText(view1, 'Start Game', 'Click Start Game Button P1', 'button'); // Specify selector
+      await findAndClickElementByText(view1, 'Start Game', 'Click Start Game Button P1', 'button');
       await delay(1000);
 
       console.log('Auto-setup process completed successfully.');
@@ -243,7 +241,7 @@ async function performAutoSetup(event, p1Url, p2Url, context) {
       // Attempt to reset view state
       try {
            const currentViewNum = getCurrentView();
-           if (mainWindow && currentViewNum !== 1 && view1 && !view1.webContents.isDestroyed()) { console.log("Switching back to V1 after error."); setCurrentView(1); mainWindow.setBrowserView(view1); resizeView(view1); sendPreview(); }
+           if (mainWindow && currentViewNum !== 1 && view1 && !view1.webContents.isDestroyed()) { console.log("Switching back to V1 after error."); setCurrentView(1); mainWindow.setBrowserView(view1); resizeView(view1); /* No preview */ }
            else if (mainWindow && currentViewNum === 1 && view1 && !view1.webContents.isDestroyed()) { console.log("Reloading V1 after error."); view1.webContents.loadURL('https://karabast.net').catch(err => console.error("Failed reload V1 after error:", err)); }
       } catch (resetError) { console.error("Failed reset view state after error:", resetError); }
   } finally {
