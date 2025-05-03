@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Karabast Tester</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
   <style>
@@ -14,11 +16,12 @@
     #sidebarContent { overflow-y:auto; flex:1; }
     .card { background:#2a2a2a; padding:10px; margin-bottom:12px; border-radius:4px; }
     #deckManager input { width:calc(100% - 60px); padding:6px; border:none; border-radius:2px; margin-right:4px; }
-    button.generic, #switchBtn, #joinBtn, #resetBtn, #deckManager button { width:100%; padding:8px; margin-bottom:8px; background:#FFE81F; border:none; border-radius:4px; color:#000; cursor:pointer; }
-    #resetBtn { background:#d32f2f; color:#fff; margin-top:auto; }
+    select, input, button { width:100%; padding:8px; margin-bottom:8px; border:none; border-radius:4px; font-size:0.9em; }
+    button.generic { background:#FFE81F; color:#000; cursor:pointer; }
+    #resetBtn { background:#d32f2f; color:#fff; margin-top:auto; cursor:pointer; }
     #content { flex:1; }
     ul { list-style:none; padding:0; }
-    li { margin-bottom:8px; }
+    li { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
     .meta { font-size:0.9em; color:#ccc; }
     #previewContainer { display:none; margin-bottom:12px; }
     #previewContainer strong { display:block; margin-bottom:4px; }
@@ -35,11 +38,16 @@
     <aside id="sidebar">
       <div id="sidebarContent">
         <div class="setup">
-          <h2>Decks</h2>
+          <h2>Decks & Auto-Setup</h2>
           <div id="deckManager" class="card">
             <input id="deckInput" placeholder="Paste deck URL" />
-            <button id="addDeckBtn">Add</button>
+            <button id="addDeckBtn" class="generic">Add</button>
           </div>
+          <select id="p1Select"></select>
+          <input id="p1Custom" placeholder="Custom P1 URL" style="display:none;" />
+          <select id="p2Select"></select>
+          <input id="p2Custom" placeholder="Custom P2 URL" style="display:none;" />
+          <button id="autoSetupBtn" class="generic">Auto Setup</button>
           <ul id="deckList"></ul>
           <button id="joinBtn" class="generic">Join Lobby</button>
         </div>
@@ -62,6 +70,10 @@
     const phaseLabel = document.getElementById('phaseLabel');
     const previewContainer = document.getElementById('previewContainer');
     const previewImg = document.getElementById('previewImg');
+    const p1Select = document.getElementById('p1Select');
+    const p2Select = document.getElementById('p2Select');
+    const p1Custom = document.getElementById('p1Custom');
+    const p2Custom = document.getElementById('p2Custom');
 
     function loadDecks() { decks = JSON.parse(localStorage.getItem(deckKey) || '[]'); }
     function saveDecks() { localStorage.setItem(deckKey, JSON.stringify(decks)); }
@@ -69,29 +81,47 @@
     async function addDeck(url) {
       const meta = await windowApi.fetchMetadata(url);
       decks.push({ url, ...meta });
-      saveDecks(); renderDeckList();
+      saveDecks(); renderDeckList(); populateSelects();
     }
-
     function renderDeckList() {
       const list = document.getElementById('deckList'); list.innerHTML = '';
-      decks.forEach((d,i) => {const li=document.createElement('li');li.innerHTML=`<div><strong>${d.name}</strong><br/><span class=\"meta\">by ${d.author}</span></div>`;const btnCopy=document.createElement('button');btnCopy.textContent='Copy';btnCopy.onclick=()=>navigator.clipboard.writeText(d.url);const btnRefresh=document.createElement('button');btnRefresh.textContent='↻';btnRefresh.onclick=async()=>{const m=await windowApi.fetchMetadata(d.url);decks[i]={url:d.url,...m};saveDecks();renderDeckList();};const btnDelete=document.createElement('button');btnDelete.textContent='Delete';btnDelete.onclick=()=>{decks.splice(i,1);saveDecks();renderDeckList();};li.append(btnCopy,btnRefresh,btnDelete);list.appendChild(li);});
+      decks.forEach((d,i) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<div><strong>${d.name}</strong><br/><span class="meta">by ${d.author}</span></div>`;
+        const btnCopy = document.createElement('button'); btnCopy.textContent='Copy'; btnCopy.className='generic'; btnCopy.onclick=()=>navigator.clipboard.writeText(d.url);
+        const btnRefresh = document.createElement('button'); btnRefresh.textContent='Refresh'; btnRefresh.className='generic'; btnRefresh.onclick=async()=>{ const m=await windowApi.fetchMetadata(d.url); decks[i]={url:d.url,...m}; saveDecks(); renderDeckList(); populateSelects(); };
+        const btnDelete = document.createElement('button'); btnDelete.textContent='Delete'; btnDelete.className='generic'; btnDelete.onclick=()=>{ decks.splice(i,1); saveDecks(); renderDeckList(); populateSelects(); };
+        li.append(btnCopy, btnRefresh, btnDelete); list.appendChild(li);
+      });
+    }
+    function populateSelects() {
+      [p1Select,p2Select].forEach(select => {
+        select.innerHTML='';
+        decks.forEach(d => {
+          const opt=document.createElement('option'); opt.value=d.url; opt.textContent=d.name; select.append(opt);
+        });
+        const customOpt=document.createElement('option'); customOpt.value='custom'; customOpt.textContent='Custom URL'; select.append(customOpt);
+      });
     }
 
-    loadDecks(); renderDeckList();
-    document.getElementById('addDeckBtn').addEventListener('click', () => { const url = document.getElementById('deckInput').value.trim(); if (url && !decks.find(d=>d.url===url)) addDeck(url); document.getElementById('deckInput').value=''; });
+    document.getElementById('addDeckBtn').onclick=()=>{ const url=document.getElementById('deckInput').value.trim(); if(url&&!decks.find(d=>d.url===url)) addDeck(url); document.getElementById('deckInput').value=''; };
+    p1Select.onchange=()=>{ p1Custom.style.display=p1Select.value==='custom'?'block':'none'; };
+    p2Select.onchange=()=>{ p2Custom.style.display=p2Select.value==='custom'?'block':'none'; };
+    document.getElementById('autoSetupBtn').onclick=()=>{ const p1=p1Select.value==='custom'?p1Custom.value.trim():p1Select.value; const p2=p2Select.value==='custom'?p2Custom.value.trim():p2Select.value; windowApi.autoSetup(p1,p2); };
+    windowApi.onAutoSetupDone(()=>alert('Auto-setup complete'));
 
-    document.getElementById('joinBtn').addEventListener('click', async () => { const url = await windowApi.readClipboard(); windowApi.joinLobby(url); });
-    windowApi.onLobbySuccess(() => { body.dataset.phase = 'gameplay'; phaseLabel.textContent = 'Gameplay Phase'; });
-    windowApi.onLobbyError(msg => alert(msg));
+    loadDecks(); renderDeckList(); populateSelects();
 
-    document.getElementById('switchBtn').addEventListener('click', () => windowApi.switchPlayer());
+    document.getElementById('joinBtn').onclick=async()=>{ const url=await windowApi.readClipboard(); windowApi.joinLobby(url); };
+    windowApi.onLobbySuccess(()=>{ body.dataset.phase='gameplay'; phaseLabel.textContent='Gameplay Phase'; });
+    windowApi.onLobbyError(msg=>alert(msg));
 
-    windowApi.onTriggerSwitch(() => { if (body.dataset.phase === 'gameplay') windowApi.switchPlayer(); });
+    document.getElementById('switchBtn').onclick=()=>windowApi.switchPlayer();
+    windowApi.onTriggerSwitch(()=>{ if(body.dataset.phase==='gameplay') windowApi.switchPlayer(); });
+    windowApi.onPreview(dataUrl=>{ if(dataUrl){ previewImg.src=dataUrl; previewContainer.style.display='block'; } else previewContainer.style.display='none'; });
 
-    windowApi.onPreview(dataUrl => { if (dataUrl) { previewImg.src = dataUrl; previewContainer.style.display = 'block'; } else { previewContainer.style.display = 'none'; } });
-
-    document.getElementById('resetBtn').addEventListener('click', () => { if (confirm('Go back to setup?')) windowApi.resetPhase(); });
-    windowApi.onResetSuccess(() => { body.dataset.phase = 'setup'; phaseLabel.textContent = 'Setup Phase'; previewContainer.style.display = 'none'; });
+    document.getElementById('resetBtn').onclick=()=>{ if(confirm('Go back to setup?')) windowApi.resetPhase(); };
+    windowApi.onResetSuccess(()=>{ body.dataset.phase='setup'; phaseLabel.textContent='Setup Phase'; previewContainer.style.display='none'; });
   </script>
 </body>
 </html>

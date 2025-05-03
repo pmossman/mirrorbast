@@ -21,58 +21,44 @@ function createWindow() {
 
   mainWindow.loadFile('index.html');
 
-  // Create game views
+  // Create BrowserViews for both players
   view1 = new BrowserView({ webPreferences: { partition: 'persist:player1', contextIsolation: true } });
   view2 = new BrowserView({ webPreferences: { partition: 'persist:player2', contextIsolation: true } });
 
-  // Attach Player1 initially
   mainWindow.setBrowserView(view1);
   resizeView(view1);
   view1.webContents.loadURL('https://karabast.net');
 
-  // Adjust on window resize
-  mainWindow.on('resize', () => {
-    const active = currentView === 1 ? view1 : view2;
-    resizeView(active);
-  });
+  // Open devtools for logging
+  view1.webContents.openDevTools({ mode: 'detach' });
+  view1.webContents.on('console-message', (e, level, message) => console.log('[VIEW1]', message));
 
-  // Register global Space handler once
+  mainWindow.on('resize', () => resizeView(currentView === 1 ? view1 : view2));
   mainWindow.on('focus', () => {
     if (!globalShortcut.isRegistered('Space')) {
       globalShortcut.register('Space', () => {
-        if (inGameplay) {
-          mainWindow.webContents.send('trigger-switch');
-        }
+        if (inGameplay) mainWindow.webContents.send('trigger-switch');
       });
     }
   });
   mainWindow.on('blur', () => {
-    if (globalShortcut.isRegistered('Space')) {
-      globalShortcut.unregister('Space');
-    }
+    if (globalShortcut.isRegistered('Space')) globalShortcut.unregister('Space');
   });
 }
 
 function resizeView(view) {
-  const [contentW, contentH] = mainWindow.getContentSize();
-  view.setBounds({
-    x: SIDEBAR_WIDTH,
-    y: HEADER_HEIGHT,
-    width: contentW - SIDEBAR_WIDTH,
-    height: contentH - HEADER_HEIGHT,
-  });
+  const [width, height] = mainWindow.getContentSize();
+  view.setBounds({ x: SIDEBAR_WIDTH, y: HEADER_HEIGHT, width: width - SIDEBAR_WIDTH, height: height - HEADER_HEIGHT });
   view.setAutoResize({ width: true, height: true });
 }
 
 function sendPreview() {
-  const inactive = currentView === 1 ? view2 : view1;
-  inactive.webContents.capturePage().then(img => {
-    mainWindow.webContents.send('preview-updated', img.toDataURL());
-  });
+  const other = currentView === 1 ? view2 : view1;
+  other.webContents.capturePage().then(img => mainWindow.webContents.send('preview-updated', img.toDataURL()));
 }
 
+// IPC handlers
 ipcMain.handle('read-clipboard', () => clipboard.readText());
-
 ipcMain.handle('fetch-metadata', async (_, url) => {
   try {
     const res = await fetch(`https://karabast.net/api/swudbdeck?deckLink=${encodeURIComponent(url)}`);
@@ -92,9 +78,6 @@ ipcMain.on('join-lobby', (e, url) => {
     e.reply('lobby-success');
     sendPreview();
   });
-  view2.webContents.once('did-fail-load', (_e, _code, desc) => {
-    e.reply('lobby-error', desc);
-  });
   view2.webContents.loadURL(url);
 });
 
@@ -106,7 +89,7 @@ ipcMain.on('switch-player', () => {
   sendPreview();
 });
 
-ipcMain.on('reset-phase', (e) => {
+ipcMain.on('reset-phase', e => {
   view1.webContents.loadURL('https://karabast.net');
   currentView = 1;
   inGameplay = false;
@@ -116,8 +99,100 @@ ipcMain.on('reset-phase', (e) => {
   mainWindow.webContents.send('preview-updated', '');
 });
 
+// Auto setup flow with explicit focus + change event
+ipcMain.on('auto-setup', (e, p1Url, p2Url) => {
+  const delay = ms => new Promise(res => setTimeout(res, ms));
+  view1.webContents
+    .executeJavaScript(`
+      console.log('Step1: Click Create Lobby');
+      Array.from(document.querySelectorAll('button'))
+        .find(b => b.textContent.trim() === 'Create Lobby')
+        ?.click();
+    `)
+    
+    .then(() =>
+      view1.webContents.executeJavaScript(`
+        console.log('Step2: Select Private');
+        Array.from(document.querySelectorAll('input[type=radio]'))
+          .find(r => r.value === 'Private')
+          ?.click();
+      `)
+    )
+    
+    .then(() =>
+      view1.webContents.executeJavaScript(`
+        console.log('Step3: Fill deck input');
+        const input = Array.from(document.querySelectorAll('input[type=text]')).find(el=>el.offsetParent!==null);
+        if (input) {
+          console.log('Filling input with', ${JSON.stringify(p1Url)});
+          input.focus();
+          (function(){
+            const input = Array
+              .from(document.querySelectorAll('input[type=text]'))
+              .find(el => el.offsetParent !== null);
+            if (!input) return;
+
+            // 1) Grab the native setter (React will see this)
+            const nativeSetter = Object.getOwnPropertyDescriptor(
+              HTMLInputElement.prototype, 'value'
+            ).set;
+
+            // 2) Call it on your element
+            nativeSetter.call(input, ${JSON.stringify(p1Url)});
+
+            // 3) Dispatch React’s preferred events
+            input.dispatchEvent(new Event('input',  { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            console.log('Deck URL set via native setter');
+          })();
+
+        } else {
+          console.error('Input not found');
+        }
+      `)
+    )
+    
+    
+    
+    .then(() =>
+      view1.webContents.executeJavaScript(`
+        console.log('Step4: Click Create Game');
+        Array.from(document.querySelectorAll('button'))
+          .find(b => b.textContent.trim() === 'Create Game')
+          ?.click();
+      `)
+    )
+    
+    .then(
+      () =>
+        new Promise(resolve =>
+          view1.webContents.once('did-navigate', resolve)
+        )
+    )
+    
+    .then(() =>
+      view1.webContents.executeJavaScript(`
+        console.log('Step5: Click Copy Invite Link');
+        Array.from(document.querySelectorAll('button'))
+          .find(b => b.textContent.trim() === 'Copy Invite Link')
+          ?.click();
+      `)
+    )
+    
+    .then(() => {
+      console.log('Step6: Read clipboard and auto join');
+      const link = clipboard.readText().trim();
+      view2.webContents.loadURL(link);
+      mainWindow.setBrowserView(view2);
+      resizeView(view2);
+      currentView = 2;
+      inGameplay = true;
+      sendPreview();
+      e.reply('auto-setup-done');
+    });
+});
+
+
 app.whenReady().then(createWindow);
 app.on('window-all-closed', () => { globalShortcut.unregisterAll(); if (process.platform !== 'darwin') app.quit(); });
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
-});
+app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
