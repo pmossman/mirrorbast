@@ -6,14 +6,12 @@ html {
   margin: 0;
   padding: 0;
   height: 100%;
-  /* --- Use Barlow as the base font --- */
   font-family: "Barlow", sans-serif;
   background-color: #0d0d0d;
-  /* --- Changed default text color slightly --- */
   color: #eeeeee;
   overflow: hidden;
   box-sizing: border-box;
-  font-size: 15px; /* Base font size */
+  font-size: 15px;
 }
 
 *,
@@ -26,10 +24,10 @@ html {
 :root {
   --player1-color: #4488ff; /* Blue */
   --player2-color: #ff4444; /* Red */
-  --neutral-border-color: #555555; /* Neutral gray for borders */
-  --neutral-text-color: #cccccc; /* Light gray for text accents */
-  --button-bg-color: #5a5a5a; /* Neutral button background */
-  --button-text-color: #eeeeee; /* Light text for buttons */
+  --neutral-border-color: #555555;
+  --neutral-text-color: #cccccc;
+  --button-bg-color: #5a5a5a;
+  --button-text-color: #eeeeee;
   --button-hover-bg-color: #707070;
   --button-active-bg-color: #484848;
   --footer-height: 50px;
@@ -46,28 +44,43 @@ html {
   display: flex;
   align-items: center;
   padding: 0 15px;
-  /* --- Use neutral border color --- */
   border-bottom: 2px solid var(--neutral-border-color);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   z-index: 1000;
 }
 #header h1 {
   margin: 0 0 0 10px;
-  font-size: 1.4em; /* Slightly larger */
-  /* --- Use neutral text color --- */
-  color: var(--neutral-text-color);
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); /* Stronger shadow */
+  font-size: 1.4em;
+  color: var(--neutral-text-color); /* Default color for parts not overridden */
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
   white-space: nowrap;
-  /* --- Set font, weight, and transform --- */
   font-family: "Barlow", sans-serif;
-  font-weight: 700; /* Bold */
-  text-transform: uppercase; /* ALL CAPS */
-  letter-spacing: 1px; /* Add slight spacing */
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
+#header h1 .italic {
+  font-style: italic;
+  font-weight: normal;
+}
+#header h1 .title-mirror {
+}
+#header h1 .title-p1 {
+  color: var(--player1-color);
+}
+#header h1 .title-p2 {
+  color: var(--player2-color);
+}
+#header h1 .title-bast {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--neutral-text-color);
+  margin-left: 1px;
+}
+
 #sidebarToggleBtn {
   background: none;
   border: none;
-  /* --- Use neutral text color --- */
   color: var(--neutral-text-color);
   font-size: 1.8em;
   padding: 0 10px;
@@ -146,19 +159,18 @@ body.deck-view-active #sidebar {
   border-right: none;
 }
 body.deck-view-active #content {
-  display: none; /* Keep content hidden */
+  display: none;
 }
 /* Section Headers in Sidebar */
 #sidebar h2,
 #sidebar h3 {
-  /* --- Use neutral text color --- */
   color: var(--neutral-text-color);
   border-bottom: 1px solid #444;
   padding-bottom: 4px;
   margin-top: 12px;
   margin-bottom: 8px;
   font-size: 1em;
-  font-weight: 700; /* Make headers bold */
+  font-weight: 700;
 }
 #sidebar h2:first-child,
 #sidebar h3:first-child {
@@ -236,14 +248,14 @@ button {
   font-size: 0.85em;
   background-color: #333;
   color: #eee;
-  font-family: inherit; /* Inherit Barlow */
+  font-family: inherit;
 }
 input[type="text"]::placeholder {
   color: #888;
   opacity: 0.7;
 }
 
-/* --- Player Specific Select Styles --- */
+/* Player Specific Select Styles */
 select#p1Select {
   border: 2px solid var(--player1-color);
   color: var(--player1-color);
@@ -254,16 +266,14 @@ select#p2Select {
   color: var(--player2-color);
   font-weight: bold;
 }
-/* Ensure dropdown options are readable */
 select option {
-  color: #eee; /* Standard text color for options */
-  background-color: #333; /* Match select background */
-  font-weight: normal; /* Reset font weight for options */
+  color: #eee;
+  background-color: #333;
+  font-weight: normal;
 }
 
 /* Button Styles */
 button.generic {
-  /* --- Use neutral button colors --- */
   background-color: var(--button-bg-color);
   color: var(--button-text-color);
   cursor: pointer;
@@ -284,15 +294,14 @@ button.generic:active:not(:disabled) {
   transform: scale(0.98);
 }
 button.generic:disabled {
-  background-color: #444; /* Darker disabled background */
-  color: #888; /* Lighter disabled text */
+  background-color: #444;
+  color: #888;
   cursor: not-allowed;
   transform: none;
 }
-/* Primary Action Button Style (Keep distinct?) */
-/* Option: Make it slightly brighter neutral */
+/* Primary Action Button Style */
 button.primary-action {
-  background-color: #777777; /* Brighter neutral */
+  background-color: #777777;
   color: #ffffff;
   padding: 10px 12px;
   font-size: 0.9em;
@@ -306,7 +315,7 @@ button.primary-action:active:not(:disabled) {
   background-color: #666666;
 }
 
-/* Secondary Action Button Style (Already neutral) */
+/* Secondary Action Button Style */
 button.secondary-action {
   background-color: #4f4f4f;
   color: #ddd;
@@ -345,12 +354,12 @@ button.secondary-action:active:not(:disabled) {
   background-color: #b71c1c;
   transform: scale(0.98);
 }
-/* Back button uses generic neutral now */
+/* Back button uses generic neutral */
 #backToSetupBtn {
   /* Inherits generic styles */
 }
 
-/* Deck List Styles */
+/* --- Deck List Styles --- */
 ul#deckList {
   list-style: none;
   padding: 0;
@@ -361,19 +370,22 @@ ul#deckList {
 }
 ul#deckList li {
   background-color: #2f2f2f;
-  padding: 6px 8px;
-  margin-bottom: 6px;
+  padding: 8px 10px; /* Increased padding */
+  margin-bottom: 8px; /* Increased margin */
   border-radius: 4px;
   display: flex;
-  align-items: center;
+  align-items: center; /* Align items vertically */
   justify-content: space-between;
   border: 1px solid #4a4a4a;
-  font-size: 0.85em;
+  font-size: 0.9em; /* Slightly larger base font */
 }
-ul#deckList li div:first-child {
+/* Deck Info Container */
+ul#deckList li .deck-info {
   flex-grow: 1;
-  margin-right: 8px;
-  overflow: hidden;
+  margin-right: 10px; /* Space between info and buttons */
+  overflow: hidden; /* Prevent long text from breaking layout */
+  display: flex;
+  flex-direction: column; /* Stack info vertically */
 }
 ul#deckList li strong {
   color: #eee;
@@ -381,58 +393,91 @@ ul#deckList li strong {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 1.05em; /* Make name slightly larger */
+  margin-bottom: 2px; /* Space below name */
 }
 ul#deckList li .meta {
-  font-size: 0.8em;
+  font-size: 0.85em; /* Adjust size */
   color: #aaa;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-bottom: 3px; /* Space below author */
 }
+/* Deck URL Style */
+ul#deckList li .deck-url {
+  font-size: 0.75em; /* Smaller font for URL */
+  color: #888; /* Lighter color */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block; /* Ensure it takes its own line */
+  margin-top: 2px;
+}
+
 /* Deck list button container */
 ul#deckList li .deck-buttons {
   display: flex;
   flex-shrink: 0;
-  gap: 4px;
+  gap: 6px; /* Increased gap */
 }
-ul#deckList li button {
-  width: auto;
-  padding: 3px 6px;
-  font-size: 0.8em;
+/* Icon Button Styling */
+ul#deckList li button.icon-btn {
+  width: 30px; /* Fixed width */
+  height: 30px; /* Fixed height */
+  padding: 0; /* Remove padding */
+  font-size: 1em; /* Reset font size (doesn't affect SVG much) */
   margin-left: 0;
   margin-bottom: 0;
   flex-shrink: 0;
+  display: flex; /* Use flex to center icon */
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px; /* Consistent rounding */
+  line-height: 1; /* Ensure icon vertical alignment */
 }
-/* Specific Deck List Button Styles */
-/* Keep delete red */
+/* SVG Styling within buttons */
+ul#deckList li button.icon-btn svg {
+  width: 16px; /* Control icon size */
+  height: 16px;
+  fill: var(--button-text-color); /* Default icon color */
+}
+
+/* Specific Deck List Button Colors */
 ul#deckList li button.delete-btn {
-  background-color: #a04040;
-  color: white;
+  background-color: var(--player2-color); /* Red */
 }
-ul#deckList li button.delete-btn:hover {
-  background-color: #c05050;
+ul#deckList li button.delete-btn:hover:not(:disabled) {
+  background-color: #d32f2f; /* Darker red on hover */
 }
-/* Make open/refresh neutral */
-ul#deckList li button.open-url-btn,
-ul#deckList li button.generic {
-  /* Target refresh button */
+ul#deckList li button.open-url-btn {
+  background-color: var(--player1-color); /* Blue */
+}
+ul#deckList li button.open-url-btn:hover:not(:disabled) {
+  background-color: #1e88e5; /* Darker blue on hover */
+}
+/* Refresh button uses generic neutral */
+ul#deckList li button.refresh-btn {
   background-color: var(--button-bg-color);
-  color: var(--button-text-color);
 }
-ul#deckList li button.open-url-btn:hover,
-ul#deckList li button.generic:hover:not(:disabled) {
+ul#deckList li button.refresh-btn:hover:not(:disabled) {
   background-color: var(--button-hover-bg-color);
+}
+/* Ensure icon color contrasts with button background */
+ul#deckList li button.delete-btn svg,
+ul#deckList li button.open-url-btn svg {
+  fill: white; /* White icon for colored buttons */
 }
 
 /* Main Content Area Styles */
 #content {
   flex: 1;
-  background-color: #000; /* Background for the content area itself */
+  background-color: #000;
   position: relative;
   display: block;
   transition: border 0.3s ease-in-out;
-  border: 3px solid transparent; /* Default transparent border */
-  padding: 3px; /* Equal to border width */
+  border: 3px solid transparent;
+  padding: 3px;
   box-sizing: border-box;
 }
 
@@ -452,7 +497,6 @@ ul#deckList li button.generic:hover:not(:disabled) {
   width: 100%;
   height: var(--footer-height);
   background-color: #1f1f1f;
-  /* --- Use neutral border color --- */
   border-top: 2px solid var(--neutral-border-color);
   display: flex;
   align-items: center;
@@ -465,7 +509,7 @@ ul#deckList li button.generic:hover:not(:disabled) {
 .footer-controls {
   display: flex;
   align-items: center;
-  justify-content: space-between; /* Distribute items */
+  justify-content: space-between;
   width: 100%;
   max-width: 700px;
   gap: 15px;
@@ -476,8 +520,7 @@ ul#deckList li button.generic:hover:not(:disabled) {
   margin-bottom: 0;
   padding: 8px 15px;
   font-size: 0.9em;
-  order: 2; /* Keep switch button in the middle */
-  /* Inherits generic neutral style */
+  order: 2;
 }
 
 /* Active Player Indicator Styles */
@@ -486,13 +529,13 @@ ul#deckList li button.generic:hover:not(:disabled) {
   font-weight: bold;
   padding: 5px 10px;
   border-radius: 4px;
-  order: 1; /* Indicator on the left */
+  order: 1;
   flex-shrink: 0;
   text-align: center;
   min-width: 140px;
-  color: white; /* Base text color */
-  background-color: #444; /* Default background */
-  transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out; /* Add transition */
+  color: white;
+  background-color: #444;
+  transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
 }
 #activePlayerIndicator.player1-active {
   background-color: var(--player1-color);
@@ -506,7 +549,7 @@ ul#deckList li button.generic:hover:not(:disabled) {
   display: flex;
   align-items: center;
   gap: 5px;
-  order: 3; /* Toggle on the right */
+  order: 3;
   flex-shrink: 0;
 }
 .spacebar-toggle-container label {
@@ -520,7 +563,6 @@ button.toggle-btn {
   font-size: 0.8em;
   min-height: 28px;
   margin-bottom: 0;
-  /* Keep red/green for toggle */
 }
 button.toggle-btn.enabled {
   background-color: #4caf50;

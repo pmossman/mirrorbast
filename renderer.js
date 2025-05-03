@@ -51,7 +51,7 @@ if (window.api) {
   const spacebarToggleBtn = document.getElementById("spacebarToggle");
   const activePlayerIndicator = document.getElementById(
     "activePlayerIndicator"
-  ); // *** NEW ***
+  );
 
   // --- State ---
   const DECK_STORAGE_KEY = "savedDecks";
@@ -153,41 +153,66 @@ if (window.api) {
       deckListElement.appendChild(li);
       return;
     }
+
+    // --- SVG Icons ---
+    const svgIconTrash = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16"><path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5m-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5M4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06m6.53-.528a.5.5 0 0 0-.528.47l-.5 8.5a.5.5 0 0 0 .998.058l.5-8.5a.5.5 0 0 0-.47-.528M8 4.5a.5.5 0 0 0-.5.5v8.5a.5.5 0 0 0 1 0V5a.5.5 0 0 0-.5-.5"/></svg>`;
+    const svgIconExternalLink = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-up-right" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg>`;
+    const svgIconRefresh = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>`;
+    // --- End SVG Icons ---
+
     savedDecks.forEach((deck, index) => {
       const li = document.createElement("li");
+
+      // --- Info Div (Name, Author, URL) ---
       const infoDiv = document.createElement("div");
+      infoDiv.className = "deck-info"; // Add class for styling
+
       const nameStrong = document.createElement("strong");
       nameStrong.textContent = deck.name || "Unnamed";
       nameStrong.title = deck.name || "Unnamed";
+
       const authorSpan = document.createElement("span");
       authorSpan.className = "meta";
       authorSpan.textContent = `by ${deck.author || "Unknown"}`;
       authorSpan.title = `by ${deck.author || "Unknown"}`;
-      infoDiv.append(nameStrong, document.createElement("br"), authorSpan);
 
+      // *** NEW: Deck URL Span ***
+      const deckUrlSpan = document.createElement("span");
+      deckUrlSpan.className = "deck-url"; // Add class for styling
+      deckUrlSpan.textContent = deck.url;
+      deckUrlSpan.title = deck.url; // Tooltip for full URL if truncated
+
+      // Append info elements
+      infoDiv.append(nameStrong, authorSpan, deckUrlSpan); // Add URL span
+
+      // --- Buttons Div ---
       const buttonsDiv = document.createElement("div");
       buttonsDiv.className = "deck-buttons";
 
+      // --- Open URL Button ---
       const btnOpenUrl = document.createElement("button");
-      btnOpenUrl.textContent = "Open";
-      btnOpenUrl.className = "generic open-url-btn";
-      btnOpenUrl.title = `Open deck URL in browser:\n${deck.url}`;
+      btnOpenUrl.className = "generic icon-btn open-url-btn"; // Add specific class
+      btnOpenUrl.title = `Open deck URL in browser`; // Simpler tooltip
+      btnOpenUrl.innerHTML = svgIconExternalLink; // Use SVG icon
       btnOpenUrl.onclick = (e) => {
         e.stopPropagation();
         openExternalUrl(deck.url);
       };
 
+      // --- Refresh Button ---
       const btnRefresh = document.createElement("button");
-      btnRefresh.textContent = "Refresh";
-      btnRefresh.className = "generic";
+      btnRefresh.className = "generic icon-btn refresh-btn"; // Add specific class
       btnRefresh.title = "Refresh metadata";
+      btnRefresh.innerHTML = svgIconRefresh; // Use SVG icon
       btnRefresh.onclick = async (e) => {
         e.stopPropagation();
-        btnRefresh.textContent = "...";
+        // Visually indicate loading (e.g., disable, maybe add spinner later)
         btnRefresh.disabled = true;
         btnOpenUrl.disabled = true;
         const btnDelete = li.querySelector(".delete-btn");
         if (btnDelete) btnDelete.disabled = true;
+        // Add a temporary 'loading' state if desired via CSS class
+        // btnRefresh.classList.add('loading');
         try {
           const newMeta = await fetchMetadata(deck.url);
           if (
@@ -199,12 +224,12 @@ if (window.api) {
             savedDecks[index] = { url: deck.url, ...newMeta };
             saveDecks();
             renderDeckList();
-            populateSelects();
+            populateSelects(); // Re-render handles re-enabling
             console.log(`Refreshed: ${newMeta.name}`);
           } else {
             alert(`Refresh fail: ${newMeta?.name || "Unknown"}`);
             console.warn("Refresh fail:", deck.url, newMeta);
-            btnRefresh.textContent = "Refresh";
+            // Manually re-enable buttons on failure if not re-rendering
             btnRefresh.disabled = false;
             btnOpenUrl.disabled = false;
             if (btnDelete) btnDelete.disabled = false;
@@ -212,17 +237,20 @@ if (window.api) {
         } catch (error) {
           console.error("Refresh error:", error);
           alert(`Refresh error: ${error.message}`);
-          btnRefresh.textContent = "Refresh";
           btnRefresh.disabled = false;
           btnOpenUrl.disabled = false;
           if (btnDelete) btnDelete.disabled = false;
+        } finally {
+          // Remove loading state if added
+          // btnRefresh.classList.remove('loading');
         }
       };
 
+      // --- Delete Button ---
       const btnDelete = document.createElement("button");
-      btnDelete.textContent = "Delete";
-      btnDelete.className = "generic delete-btn";
+      btnDelete.className = "generic icon-btn delete-btn"; // Add specific class
       btnDelete.title = "Delete deck";
+      btnDelete.innerHTML = svgIconTrash; // Use SVG icon
       btnDelete.onclick = (e) => {
         e.stopPropagation();
         if (confirm(`Delete "${deck.name || "this deck"}"?`)) {
@@ -233,7 +261,11 @@ if (window.api) {
           console.log(`Deleted: ${deck.name || deck.url}`);
         }
       };
+
+      // Append buttons to buttonsDiv (Order: Open, Refresh, Delete)
       buttonsDiv.append(btnOpenUrl, btnRefresh, btnDelete);
+
+      // Append info and buttons to list item
       li.append(infoDiv, buttonsDiv);
       deckListElement.appendChild(li);
     });
@@ -319,10 +351,8 @@ if (window.api) {
 
   /** Updates the border and footer indicator based on the active player */
   function updateActivePlayerVisuals(playerNum) {
-    activePlayer = playerNum; // Update state
-    console.log(`Renderer: Updating visuals for active player ${activePlayer}`);
-
-    // Update content border
+    activePlayer = playerNum;
+    // console.log(`Renderer: Updating visuals for active player ${activePlayer}`);
     if (contentElement) {
       contentElement.classList.toggle(
         "player1-active-border",
@@ -332,24 +362,18 @@ if (window.api) {
         "player2-active-border",
         activePlayer === 2
       );
-    } else {
-      console.warn("Content element not found for border update.");
     }
-
-    // Update footer indicator text and class
     if (activePlayerIndicator) {
       if (activePlayer === 1) {
         activePlayerIndicator.textContent = "Player 1 Active";
-        activePlayerIndicator.className = "player1-active"; // Set class directly
+        activePlayerIndicator.className = "player1-active";
       } else if (activePlayer === 2) {
         activePlayerIndicator.textContent = "Player 2 Active";
-        activePlayerIndicator.className = "player2-active"; // Set class directly
+        activePlayerIndicator.className = "player2-active";
       } else {
         activePlayerIndicator.textContent = "Unknown Player";
-        activePlayerIndicator.className = ""; // Clear classes
+        activePlayerIndicator.className = "";
       }
-    } else {
-      console.warn("Active player indicator element not found in footer.");
     }
   }
 
@@ -527,8 +551,7 @@ if (window.api) {
       enableControls();
       setSidebarCollapsed(false);
       showMainSidebarView();
-      // Ensure visuals reset to P1 on error
-      updateActivePlayerVisuals(1);
+      updateActivePlayerVisuals(1); // Ensure visuals reset to P1 on error
     }
   }
 
@@ -550,13 +573,11 @@ if (window.api) {
     setSidebarCollapsed(false);
     showMainSidebarView();
     populateSelects();
-    // Ensure visuals reset to P1 on error
-    updateActivePlayerVisuals(1);
+    updateActivePlayerVisuals(1); // Ensure visuals reset to P1 on error
   }
 
   /** Handles the trigger to switch players (e.g., from Spacebar). */
   function handleTriggerSwitch() {
-    // Main process handles the actual switch and sends back onPlayerSwitched
     if (
       isSpacebarShortcutEnabled &&
       !bodyElement.classList.contains("deck-view-active")
@@ -619,8 +640,8 @@ if (window.api) {
     onAutoSetupError(onSetupError);
     onResetSuccess(onResetComplete);
     onResetError(onResetFail);
-    onTriggerSwitch(handleTriggerSwitch); // Listens for spacebar event from main
-    onPlayerSwitched(updateActivePlayerVisuals); // *** Update visuals on confirmation ***
+    onTriggerSwitch(handleTriggerSwitch);
+    onPlayerSwitched(updateActivePlayerVisuals); // Update visuals on confirmation
     onSetSidebarCollapsed(handleSetSidebarCollapsed);
     onCollapseSidebarRequest(handleCollapseRequest);
 
