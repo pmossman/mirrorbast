@@ -3,11 +3,10 @@
 
 // --- Simplified Delay Constants (in milliseconds) ---
 const DELAYS = {
-  // Updated values as requested
-  SHORT: 200, // For quick actions or brief pauses between checks
-  MEDIUM: 1000, // For standard waits after clicks, view switches, or initial load settling
-  LONG: 3000, // For potentially slower operations like imports, backend settle, or settling after refresh
-  POLL: 150, // Interval for polling loops and internal waits
+  SHORT: 200,
+  MEDIUM: 1000,
+  LONG: 3000,
+  POLL: 150,
 };
 
 /**
@@ -20,13 +19,11 @@ const DELAYS = {
  * @throws {Error} If execution fails or the view is invalid.
  */
 const safeExecuteJavaScript = async (appContext, view, script, description) => {
-  // Ensure appContext itself is provided
   if (!appContext || !appContext.view1 || !appContext.view2) {
     throw new Error(
       `Application context not available for step: ${description}`
     );
   }
-  // Determine view number based on webContents ID
   const viewNum =
     view.webContents.id === appContext.view1.webContents.id ? "1" : "2";
   if (!view || !view.webContents || view.webContents.isDestroyed()) {
@@ -35,9 +32,7 @@ const safeExecuteJavaScript = async (appContext, view, script, description) => {
     );
   }
   try {
-    // console.log(`Executing JS in View ${viewNum} (${description}): ${script.substring(0, 100)}...`);
     const result = await view.webContents.executeJavaScript(script, true);
-    // console.log(`JS Execution Result (${description}): ${result}`);
     return result;
   } catch (error) {
     console.error(
@@ -50,11 +45,40 @@ const safeExecuteJavaScript = async (appContext, view, script, description) => {
 };
 
 /**
- * Helper function to introduce a delay.
+ * Basic helper function to introduce a delay.
  * @param {number} ms - Milliseconds to wait.
  * @returns {Promise<void>} Promise resolving after the delay.
  */
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * *** NEW: Delay function that shows spinner in renderer ***
+ * @param {object} appContext - The application context (must include mainWindow).
+ * @param {number} durationMs - Milliseconds to wait.
+ * @returns {Promise<void>} Promise resolving after the delay.
+ */
+const delayWithSpinner = async (appContext, durationMs) => {
+  const webContents = appContext.mainWindow?.webContents;
+  let spinnerShown = false; // Track if we actually showed it
+
+  if (webContents && !webContents.isDestroyed()) {
+    // Send message to show spinner
+    webContents.send("show-spinner");
+    spinnerShown = true; // Assume it was shown
+  } else {
+    console.warn("Cannot show spinner: mainWindow webContents unavailable.");
+  }
+
+  try {
+    // Wait for the specified duration
+    await delay(durationMs);
+  } finally {
+    // Only hide if we actually showed it
+    if (spinnerShown && webContents && !webContents.isDestroyed()) {
+      webContents.send("hide-spinner");
+    }
+  }
+};
 
 /**
  * Finds and clicks an element with the specified text content (case-insensitive, trimmed).
@@ -64,7 +88,7 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * @param {string} elementText - The text content to find on the element.
  * @param {string} stepDescription - Description for logging.
  * @param {string} [selector='button'] - The CSS selector for potential elements (e.g., 'button', 'p', 'button, p').
- * @param {number} [timeout=5000] - Maximum time to wait in ms.
+ * @param {number} [timeout=7000] - Maximum time to wait in ms.
  * @throws {Error} If the element is not found and clicked within the timeout.
  */
 const findAndClickElementByText = async (
@@ -73,7 +97,7 @@ const findAndClickElementByText = async (
   elementText,
   stepDescription,
   selector = "button",
-  timeout = 5000 // Timeout for the overall find operation remains separate
+  timeout = 7000
 ) => {
   const startTime = Date.now();
   const lowerElementText = elementText.toLowerCase();
@@ -92,11 +116,10 @@ const findAndClickElementByText = async (
                       !el.disabled
                   );
                   if (targetElement) {
-                      console.log('Found element:', targetElement.tagName, targetElement.textContent);
+                      // console.log('Found element:', targetElement.tagName, targetElement.textContent);
                       targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-                      // Use POLL delay for the brief wait inside JS execution
                       await new Promise(r => setTimeout(r, ${DELAYS.POLL}));
-                      console.log('Clicking element:', targetElement.tagName, targetElement.textContent);
+                      // console.log('Clicking element:', targetElement.tagName, targetElement.textContent);
                       targetElement.click();
                       return true;
                   }
@@ -107,14 +130,12 @@ const findAndClickElementByText = async (
       );
 
       if (clicked) {
-        console.log(`Successfully clicked "${elementText}" element.`);
+        // console.log(`Successfully clicked "${elementText}" element.`);
         return;
       }
     } catch (error) {
       if (Date.now() - startTime < timeout - 500) {
-        console.warn(
-          `Temporary error trying to click "${elementText}" (will retry): ${error.message}`
-        );
+        // console.warn(`Temporary error trying to click "${elementText}" (will retry): ${error.message}`);
       } else {
         console.error(
           `Persistent error trying to click "${elementText}": ${error.message}`
@@ -124,7 +145,7 @@ const findAndClickElementByText = async (
         );
       }
     }
-    // Use SHORT delay before retrying find
+    // Use SHORT delay before retrying find (no spinner needed for retry wait)
     await delay(DELAYS.SHORT);
   }
 
@@ -137,6 +158,7 @@ const findAndClickElementByText = async (
 module.exports = {
   safeExecuteJavaScript,
   delay,
+  delayWithSpinner, // Export new spinner delay
   findAndClickElementByText,
-  DELAYS, // Export the constants object
+  DELAYS,
 };

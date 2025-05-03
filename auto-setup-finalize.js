@@ -2,9 +2,10 @@
 // Handles the finalization phase of the auto-setup process.
 
 const {
-  delay,
+  // delay, // No longer directly needed here
+  delayWithSpinner, // Use the spinner version
   findAndClickElementByText,
-  DELAYS, // Import simplified delay constants
+  DELAYS,
 } = require("./auto-setup-utils");
 
 /**
@@ -25,7 +26,7 @@ async function finalizeSetup(appContext) {
     mainWindow.setBrowserView(view1);
     resizeView(view1);
   }
-  await delay(DELAYS.MEDIUM); // Use MEDIUM
+  await delayWithSpinner(appContext, DELAYS.MEDIUM); // Use spinner delay
 
   // Step 14: Click "Ready" button in P1 View
   console.log(
@@ -38,7 +39,7 @@ async function finalizeSetup(appContext) {
     "Click Ready Button P1",
     "button"
   );
-  await delay(DELAYS.MEDIUM); // Use MEDIUM
+  await delayWithSpinner(appContext, DELAYS.MEDIUM); // Use spinner delay
 
   // Step 15: Click "Start Game" button in P1 View
   console.log(
@@ -51,7 +52,7 @@ async function finalizeSetup(appContext) {
     "Click Start Game Button P1",
     "button"
   );
-  await delay(DELAYS.MEDIUM); // Use MEDIUM
+  await delayWithSpinner(appContext, DELAYS.MEDIUM); // Use spinner delay
 
   // Step 16: Request sidebar collapse
   console.log("Finalize Step 4 (Overall Step 16): Requesting sidebar collapse");

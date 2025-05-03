@@ -11,37 +11,53 @@ const {
 const path = require("path");
 const fetch = require("node-fetch");
 
-// Import the auto-setup logic AND the AbortError AND delay
 const { performAutoSetup, AbortError } = require("./auto-setup");
-const { delay } = require("./auto-setup-utils");
+const { delay } = require("./auto-setup-utils"); // Only need basic delay here now
 
 // Constants for layout
 const DEFAULT_SIDEBAR_WIDTH = 300;
 const COLLAPSED_SIDEBAR_WIDTH = 0;
 const HEADER_HEIGHT = 60;
 const FOOTER_HEIGHT = 50;
-const BORDER_WIDTH = 3; // *** NEW: Define border width (matches CSS) ***
+const BORDER_WIDTH = 3;
 
 // Keep track of the main window and the two browser views
 let mainWindow;
 let view1, view2;
-let currentView = 1; // 1 or 2
+let currentView = 1;
 let currentSidebarWidth = DEFAULT_SIDEBAR_WIDTH;
 let gameViewsVisible = true;
 let isSpacebarShortcutGloballyEnabled = true;
 let currentAbortController = null;
 
-/**
- * Creates the main application window and sets up BrowserViews.
- */
+// State for Progress Bar Management
+let activeDelayCounter = 0;
+let currentActiveDelayType = null;
+
+/** Safely gets main window webContents if available */
+function getMainWindowWebContents() {
+  if (
+    mainWindow &&
+    !mainWindow.isDestroyed() &&
+    mainWindow.webContents &&
+    !mainWindow.webContents.isDestroyed()
+  ) {
+    return mainWindow.webContents;
+  }
+  return null;
+}
+
+/** Creates the main application window and sets up BrowserViews. */
 function createWindow() {
   currentSidebarWidth = DEFAULT_SIDEBAR_WIDTH;
   gameViewsVisible = true;
   isSpacebarShortcutGloballyEnabled = true;
   currentAbortController = null;
+  activeDelayCounter = 0;
+  currentActiveDelayType = null;
 
   mainWindow = new BrowserWindow({
-    width: 1200,
+    /* ... browser window options ... */ width: 1200,
     height: 800,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -73,8 +89,8 @@ function createWindow() {
 
   mainWindow.addBrowserView(view1);
   mainWindow.addBrowserView(view2);
-  mainWindow.setBrowserView(view1); // Start with P1
-  setCurrentView(1); // Ensure state matches
+  mainWindow.setBrowserView(view1);
+  setCurrentView(1);
 
   console.log("Loading initial URL for View 1...");
   view1.webContents
@@ -85,15 +101,12 @@ function createWindow() {
     .loadURL("https://karabast.net")
     .catch((err) => console.error("Error initiating load for View 2:", err));
 
-  // Set initial view and resize
   setTimeout(() => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
+    const wc = getMainWindowWebContents();
+    if (wc) {
       if (view1 && !view1.webContents.isDestroyed()) resizeView(view1);
       if (view2 && !view2.webContents.isDestroyed()) resizeView(view2);
-      // Notify renderer of initial active player
-      if (mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-        mainWindow.webContents.send("player-switched", currentView);
-      }
+      wc.send("player-switched", currentView);
     }
   }, 150);
 
@@ -123,10 +136,10 @@ function registerSpaceShortcut() {
   if (!isSpacebarShortcutGloballyEnabled) return;
   if (!globalShortcut.isRegistered("Space")) {
     const ret = globalShortcut.register("Space", () => {
-      if (mainWindow?.webContents && !mainWindow.webContents.isDestroyed()) {
+      const wc = getMainWindowWebContents();
+      if (wc) {
         if (gameViewsVisible) {
-          // Send trigger to renderer, which then calls switchPlayer API
-          mainWindow.webContents.send("trigger-switch");
+          wc.send("trigger-switch");
         }
       } else {
         unregisterSpaceShortcut();
@@ -156,8 +169,6 @@ function resizeView(view) {
   }
   try {
     const [windowWidth, windowHeight] = mainWindow.getContentSize();
-
-    // Calculate the available area for the #content div
     const contentAreaX =
       currentSidebarWidth <= COLLAPSED_SIDEBAR_WIDTH ? 0 : currentSidebarWidth;
     const contentAreaY = HEADER_HEIGHT;
@@ -166,19 +177,11 @@ function resizeView(view) {
       1,
       windowHeight - contentAreaY - FOOTER_HEIGHT
     );
-
-    // Calculate BrowserView bounds inset within the content area
     const viewX = contentAreaX + BORDER_WIDTH;
     const viewY = contentAreaY + BORDER_WIDTH;
     const viewWidth = Math.max(1, contentAreaWidth - 2 * BORDER_WIDTH);
     const viewHeight = Math.max(1, contentAreaHeight - 2 * BORDER_WIDTH);
-
-    if (viewWidth <= 1 || viewHeight <= 1) {
-      // console.warn(`Resize skipped: Calculated invalid dimensions ${viewWidth}x${viewHeight}`);
-      return;
-    }
-
-    // console.log(`Resizing View ${view === view1 ? 1 : 2} to: x=${viewX}, y=${viewY}, w=${viewWidth}, h=${viewHeight}`);
+    if (viewWidth <= 1 || viewHeight <= 1) return;
     view.setBounds({
       x: viewX,
       y: viewY,
@@ -200,11 +203,28 @@ function setCurrentView(viewNum) {
   }
 }
 
+/** Function to reset progress bar state and notify renderer */
+function resetAndHideProgress() {
+  if (activeDelayCounter > 0 || currentActiveDelayType !== null) {
+    console.log(
+      `[Main] Resetting progress bar state. Counter was ${activeDelayCounter}.`
+    );
+    activeDelayCounter = 0;
+    currentActiveDelayType = null;
+    const wc = getMainWindowWebContents();
+    if (wc) {
+      console.log("[Main] Sending hide-progress to renderer during reset.");
+      wc.send("hide-progress");
+    }
+  }
+}
+
 // --- IPC Handlers ---
 
 ipcMain.handle("read-clipboard", () => clipboard.readText());
 
 ipcMain.handle("fetch-metadata", async (_, url) => {
+  /* ... fetch logic ... */
   if (typeof fetch !== "function")
     return { name: "Setup Error", author: "N/A" };
   try {
@@ -239,15 +259,13 @@ ipcMain.handle("fetch-metadata", async (_, url) => {
   }
 });
 
-// Handles request from renderer (button click or spacebar trigger)
 ipcMain.on("switch-player", () => {
+  /* ... switch logic ... */
   if (!gameViewsVisible)
     return console.log("Switch player ignored: Game views not visible.");
-
   const nextViewNum = currentView === 1 ? 2 : 1;
   console.log(`Switching player from ${currentView} to ${nextViewNum}`);
   const activeView = nextViewNum === 1 ? view1 : view2;
-
   if (
     mainWindow &&
     activeView?.webContents &&
@@ -256,10 +274,10 @@ ipcMain.on("switch-player", () => {
     setCurrentView(nextViewNum);
     mainWindow.setBrowserView(activeView);
     resizeView(activeView);
-    resizeView(nextViewNum === 1 ? view2 : view1); // Resize inactive view too
-    // Notify renderer about the switch completion
-    if (mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-      mainWindow.webContents.send("player-switched", nextViewNum);
+    resizeView(nextViewNum === 1 ? view2 : view1);
+    const wc = getMainWindowWebContents();
+    if (wc) {
+      wc.send("player-switched", nextViewNum);
     }
   } else {
     console.error(`Cannot switch player: View ${nextViewNum} invalid.`);
@@ -273,7 +291,10 @@ ipcMain.on("reset-phase", (event) => {
     currentAbortController.abort();
     currentAbortController = null;
   }
+  resetAndHideProgress(); // Reset progress state
+
   if (!gameViewsVisible) {
+    /* ... make views visible ... */
     gameViewsVisible = true;
     if (view1 && !view1.webContents.isDestroyed()) resizeView(view1);
     if (view2 && !view2.webContents.isDestroyed()) resizeView(view2);
@@ -283,20 +304,21 @@ ipcMain.on("reset-phase", (event) => {
     view2Loaded = false,
     errors = [];
   const checkCompletion = () => {
+    /* ... check completion logic ... */
     if (!view1Loaded || !view2Loaded) return;
     if (errors.length === 0) {
       console.log("Views reloaded successfully after reset.");
-      setCurrentView(1); // Default to P1 view after reset
+      setCurrentView(1);
       if (mainWindow) {
         currentSidebarWidth = DEFAULT_SIDEBAR_WIDTH;
         gameViewsVisible = true;
         mainWindow.setBrowserView(view1);
         if (view1 && !view1.webContents.isDestroyed()) resizeView(view1);
         if (view2 && !view2.webContents.isDestroyed()) resizeView(view2);
-        if (mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-          mainWindow.webContents.send("set-sidebar-collapsed", false);
-          // Notify renderer P1 is active after reset
-          mainWindow.webContents.send("player-switched", 1);
+        const wc = getMainWindowWebContents();
+        if (wc) {
+          wc.send("set-sidebar-collapsed", false);
+          wc.send("player-switched", 1);
         }
       }
       event.reply("reset-success");
@@ -314,10 +336,10 @@ ipcMain.on("reset-phase", (event) => {
         mainWindow.setBrowserView(view1);
         if (view1 && !view1.webContents.isDestroyed()) resizeView(view1);
         if (view2 && !view2.webContents.isDestroyed()) resizeView(view2);
-        if (mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-          mainWindow.webContents.send("set-sidebar-collapsed", false);
-          // Notify renderer P1 is active after failed reset (if possible)
-          mainWindow.webContents.send("player-switched", 1);
+        const wc = getMainWindowWebContents();
+        if (wc) {
+          wc.send("set-sidebar-collapsed", false);
+          wc.send("player-switched", 1);
         }
       }
       event.reply("reset-error", `Failed view reload: ${errors.join("; ")}`);
@@ -325,6 +347,7 @@ ipcMain.on("reset-phase", (event) => {
   };
 
   if (view1?.webContents && !view1.webContents.isDestroyed()) {
+    /* ... reload view 1 ... */
     view1.webContents
       .loadURL("https://karabast.net")
       .then(() => {
@@ -341,6 +364,7 @@ ipcMain.on("reset-phase", (event) => {
     checkCompletion();
   }
   if (view2?.webContents && !view2.webContents.isDestroyed()) {
+    /* ... reload view 2 ... */
     view2.webContents
       .loadURL("https://karabast.net")
       .then(() => {
@@ -367,12 +391,14 @@ ipcMain.on("auto-setup", async (event, p1Url, p2Url) => {
     console.log("New setup requested, aborting previous one.");
     currentAbortController.abort();
     await delay(50); // Brief pause
+    resetAndHideProgress(); // Reset progress state
   }
   currentAbortController = new AbortController();
   const signal = currentAbortController.signal;
 
   // Ensure Player 1 is active before starting
   if (currentView !== 1) {
+    /* ... switch to P1 ... */
     console.log("Auto-setup initiated: Switching to Player 1 view first.");
     const targetView = view1;
     if (
@@ -384,10 +410,11 @@ ipcMain.on("auto-setup", async (event, p1Url, p2Url) => {
       mainWindow.setBrowserView(targetView);
       resizeView(targetView);
       if (view2 && !view2.webContents.isDestroyed()) resizeView(view2);
-      if (mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-        mainWindow.webContents.send("player-switched", 1); // Notify renderer
+      const wc = getMainWindowWebContents();
+      if (wc) {
+        wc.send("player-switched", 1);
       }
-      await delay(200); // Short delay for view switch to settle visually
+      await delay(200);
       console.log("Switched to Player 1 view.");
     } else {
       console.error("Cannot switch to Player 1 view before auto-setup.");
@@ -401,6 +428,7 @@ ipcMain.on("auto-setup", async (event, p1Url, p2Url) => {
 
   // Ensure views are visible
   if (!gameViewsVisible) {
+    /* ... make views visible ... */
     console.log("Making game views visible before auto-setup.");
     gameViewsVisible = true;
     if (view1 && !view1.webContents.isDestroyed()) resizeView(view1);
@@ -410,12 +438,14 @@ ipcMain.on("auto-setup", async (event, p1Url, p2Url) => {
 
   // Ensure sidebar is expanded
   if (currentSidebarWidth <= COLLAPSED_SIDEBAR_WIDTH) {
+    /* ... expand sidebar ... */
     console.log("Ensuring sidebar expanded before auto-setup.");
     currentSidebarWidth = DEFAULT_SIDEBAR_WIDTH;
     if (view1 && !view1.webContents.isDestroyed()) resizeView(view1);
     if (view2 && !view2.webContents.isDestroyed()) resizeView(view2);
-    if (mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-      mainWindow.webContents.send("set-sidebar-collapsed", false);
+    const wc = getMainWindowWebContents();
+    if (wc) {
+      wc.send("set-sidebar-collapsed", false);
     }
     await delay(200);
   }
@@ -448,14 +478,17 @@ ipcMain.on("auto-setup", async (event, p1Url, p2Url) => {
         );
       }
     }
+    resetAndHideProgress(); // Ensure progress hidden on error
   } finally {
     console.log("Clearing auto-setup AbortController.");
     currentAbortController = null;
+    resetAndHideProgress(); // Ensure progress hidden on normal completion/abort
   }
 });
 
 // --- Sidebar State Handler ---
 ipcMain.on("sidebar-state-change", (event, isCollapsed) => {
+  /* ... resize views ... */
   currentSidebarWidth = isCollapsed
     ? COLLAPSED_SIDEBAR_WIDTH
     : DEFAULT_SIDEBAR_WIDTH;
@@ -465,6 +498,7 @@ ipcMain.on("sidebar-state-change", (event, isCollapsed) => {
 
 // --- Game View Visibility Handler ---
 ipcMain.on("set-game-views-visibility", (event, visible) => {
+  /* ... show/hide views ... */
   if (gameViewsVisible === visible) return;
   gameViewsVisible = visible;
   if (visible) {
@@ -486,6 +520,7 @@ ipcMain.on("set-game-views-visibility", (event, visible) => {
 
 // --- Spacebar Shortcut Toggle Handler ---
 ipcMain.on("toggle-spacebar-shortcut", (event, enabled) => {
+  /* ... register/unregister ... */
   isSpacebarShortcutGloballyEnabled = enabled;
   if (mainWindow?.isFocused()) {
     if (enabled) registerSpaceShortcut();
@@ -495,6 +530,7 @@ ipcMain.on("toggle-spacebar-shortcut", (event, enabled) => {
 
 // --- External URL Handler ---
 ipcMain.on("open-external-url", (event, url) => {
+  /* ... open url ... */
   if (url && (url.startsWith("http:") || url.startsWith("https:"))) {
     shell
       .openExternal(url)
@@ -503,6 +539,69 @@ ipcMain.on("open-external-url", (event, url) => {
       );
   } else {
     console.warn(`Attempted to open invalid external URL: ${url}`);
+  }
+});
+
+// Progress Bar State Management Handlers
+ipcMain.on("start-progress-delay", (event, delayType) => {
+  const wasZero = activeDelayCounter === 0;
+  activeDelayCounter++;
+  console.log(
+    `[Main:IPC] Start delay signal received. Counter: ${activeDelayCounter}, Type: ${delayType}`
+  );
+  if (wasZero) {
+    currentActiveDelayType = delayType;
+    const wc = getMainWindowWebContents();
+    if (wc) {
+      // *** Add small delay before sending show-progress ***
+      setTimeout(() => {
+        // Re-check webContents validity *inside* the timeout
+        const wcDelayed = getMainWindowWebContents();
+        if (wcDelayed) {
+          console.log(
+            `[Main:IPC] Sending show-progress (${currentActiveDelayType}) to renderer after 50ms delay (webContents ID: ${wcDelayed.id}).`
+          );
+          wcDelayed.send("show-progress", currentActiveDelayType);
+        } else {
+          console.warn(
+            `[Main:IPC] Cannot send show-progress after delay, webContents became invalid.`
+          );
+        }
+      }, 50); // 50ms delay
+    } else {
+      console.warn(
+        `[Main:IPC] Cannot send show-progress (initial check), webContents invalid.`
+      );
+    }
+  }
+});
+
+ipcMain.on("end-progress-delay", (event) => {
+  if (activeDelayCounter <= 0) {
+    console.warn(
+      "[Main:IPC] Received end-progress-delay signal, but counter was already 0 or less."
+    );
+    activeDelayCounter = 0;
+    return;
+  }
+
+  activeDelayCounter--;
+  console.log(
+    `[Main:IPC] End delay signal received. Counter: ${activeDelayCounter}`
+  );
+  if (activeDelayCounter === 0) {
+    currentActiveDelayType = null;
+    const wc = getMainWindowWebContents();
+    if (wc) {
+      console.log(
+        `[Main:IPC] Sending hide-progress to renderer (webContents ID: ${wc.id}).`
+      );
+      wc.send("hide-progress");
+    } else {
+      console.warn(
+        `[Main:IPC] Cannot send hide-progress, webContents invalid.`
+      );
+    }
   }
 });
 
@@ -533,6 +632,7 @@ app.on("gpu-process-crashed", (event, killed) =>
   console.error(`GPU crash! Killed: ${killed}`)
 );
 app.on("renderer-process-crashed", (event, webContents, killed) => {
+  /* ... error logging ... */
   console.error(
     `Renderer crash! URL: ${webContents?.getURL()}, Killed: ${killed}`
   );

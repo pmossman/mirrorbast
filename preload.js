@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld("api", {
   toggleSpacebarShortcut: (enabled) =>
     ipcRenderer.send("toggle-spacebar-shortcut", enabled),
   openExternalUrl: (url) => ipcRenderer.send("open-external-url", url),
+  // Removed start/end progress signals
 
   // On
   onLobbySuccess: (callback) =>
@@ -30,7 +31,6 @@ contextBridge.exposeInMainWorld("api", {
   onTriggerSwitch: (
     callback // Used by main process for spacebar
   ) => ipcRenderer.on("trigger-switch", (event, ...args) => callback(...args)),
-  // *** NEW: Listen for player switch confirmation from main ***
   onPlayerSwitched: (callback) =>
     ipcRenderer.on("player-switched", (event, playerNum) =>
       callback(playerNum)
@@ -41,6 +41,11 @@ contextBridge.exposeInMainWorld("api", {
     ),
   onCollapseSidebarRequest: (callback) =>
     ipcRenderer.on("collapse-sidebar", (event, ...args) => callback(...args)),
+  // *** Renamed Spinner Listeners ***
+  onShowSpinner: (callback) =>
+    ipcRenderer.on("show-spinner", (event) => callback()),
+  onHideSpinner: (callback) =>
+    ipcRenderer.on("hide-spinner", (event) => callback()),
 
   // Off
   removeListener: (channel, callback) =>
@@ -48,4 +53,4 @@ contextBridge.exposeInMainWorld("api", {
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
 });
 
-console.log("Preload script loaded (with player switch listener).");
+console.log("Preload script loaded (with spinner channels).");

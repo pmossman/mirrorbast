@@ -30,6 +30,7 @@ html {
   --button-text-color: #eeeeee;
   --button-hover-bg-color: #707070;
   --button-active-bg-color: #484848;
+  --spinner-color: #cccccc; /* Color for the spinner */
   --footer-height: 50px;
 }
 
@@ -51,13 +52,15 @@ html {
 #header h1 {
   margin: 0 0 0 10px;
   font-size: 1.4em;
-  color: var(--neutral-text-color); /* Default color for parts not overridden */
+  color: var(--neutral-text-color);
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
   white-space: nowrap;
   font-family: "Barlow", sans-serif;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
+  /* Make space for spinner */
+  margin-right: 40px; /* Adjust as needed */
 }
 #header h1 .italic {
   font-style: italic;
@@ -77,6 +80,32 @@ html {
   color: var(--neutral-text-color);
   margin-left: 1px;
 }
+
+/* --- Spinner Styles --- */
+#loadingSpinner {
+  position: absolute;
+  right: 15px; /* Position on the right */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px; /* Size of spinner */
+  height: 24px;
+  border: 3px solid rgba(204, 204, 204, 0.3); /* Light border */
+  border-radius: 50%;
+  border-top-color: var(--spinner-color); /* Spinner active color */
+  opacity: 0; /* Hidden by default */
+  transition: opacity 0.2s ease-in-out;
+  animation: spin 1s linear infinite; /* Rotation animation */
+}
+#loadingSpinner.visible {
+  opacity: 1; /* Show when class is added */
+}
+
+@keyframes spin {
+  to {
+    transform: translateY(-50%) rotate(360deg);
+  } /* Keep translateY for centering */
+}
+/* --- End Spinner Styles --- */
 
 #sidebarToggleBtn {
   background: none;
@@ -370,22 +399,22 @@ ul#deckList {
 }
 ul#deckList li {
   background-color: #2f2f2f;
-  padding: 8px 10px; /* Increased padding */
-  margin-bottom: 8px; /* Increased margin */
+  padding: 8px 10px;
+  margin-bottom: 8px;
   border-radius: 4px;
   display: flex;
-  align-items: center; /* Align items vertically */
+  align-items: center;
   justify-content: space-between;
   border: 1px solid #4a4a4a;
-  font-size: 0.9em; /* Slightly larger base font */
+  font-size: 0.9em;
 }
 /* Deck Info Container */
 ul#deckList li .deck-info {
   flex-grow: 1;
-  margin-right: 10px; /* Space between info and buttons */
-  overflow: hidden; /* Prevent long text from breaking layout */
+  margin-right: 10px;
+  overflow: hidden;
   display: flex;
-  flex-direction: column; /* Stack info vertically */
+  flex-direction: column;
 }
 ul#deckList li strong {
   color: #eee;
@@ -393,25 +422,25 @@ ul#deckList li strong {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 1.05em; /* Make name slightly larger */
-  margin-bottom: 2px; /* Space below name */
+  font-size: 1.05em;
+  margin-bottom: 2px;
 }
 ul#deckList li .meta {
-  font-size: 0.85em; /* Adjust size */
+  font-size: 0.85em;
   color: #aaa;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 3px; /* Space below author */
+  margin-bottom: 3px;
 }
 /* Deck URL Style */
 ul#deckList li .deck-url {
-  font-size: 0.75em; /* Smaller font for URL */
-  color: #888; /* Lighter color */
+  font-size: 0.75em;
+  color: #888;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  display: block; /* Ensure it takes its own line */
+  display: block;
   margin-top: 2px;
 }
 
@@ -419,28 +448,28 @@ ul#deckList li .deck-url {
 ul#deckList li .deck-buttons {
   display: flex;
   flex-shrink: 0;
-  gap: 6px; /* Increased gap */
+  gap: 6px;
 }
 /* Icon Button Styling */
 ul#deckList li button.icon-btn {
-  width: 30px; /* Fixed width */
-  height: 30px; /* Fixed height */
-  padding: 0; /* Remove padding */
-  font-size: 1em; /* Reset font size (doesn't affect SVG much) */
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 1em;
   margin-left: 0;
   margin-bottom: 0;
   flex-shrink: 0;
-  display: flex; /* Use flex to center icon */
+  display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px; /* Consistent rounding */
-  line-height: 1; /* Ensure icon vertical alignment */
+  border-radius: 4px;
+  line-height: 1;
 }
 /* SVG Styling within buttons */
 ul#deckList li button.icon-btn svg {
-  width: 16px; /* Control icon size */
+  width: 16px;
   height: 16px;
-  fill: var(--button-text-color); /* Default icon color */
+  fill: var(--button-text-color);
 }
 
 /* Specific Deck List Button Colors */
@@ -456,17 +485,15 @@ ul#deckList li button.open-url-btn {
 ul#deckList li button.open-url-btn:hover:not(:disabled) {
   background-color: #1e88e5; /* Darker blue on hover */
 }
-/* Refresh button uses generic neutral */
 ul#deckList li button.refresh-btn {
   background-color: var(--button-bg-color);
 }
 ul#deckList li button.refresh-btn:hover:not(:disabled) {
   background-color: var(--button-hover-bg-color);
 }
-/* Ensure icon color contrasts with button background */
 ul#deckList li button.delete-btn svg,
 ul#deckList li button.open-url-btn svg {
-  fill: white; /* White icon for colored buttons */
+  fill: white;
 }
 
 /* Main Content Area Styles */

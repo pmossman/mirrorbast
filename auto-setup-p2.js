@@ -1,12 +1,12 @@
 // auto-setup-p2.js
 // Handles the Player 2 setup phase of the auto-setup process.
-// Assumes sufficient delay occurred after P1 setup for lobby readiness.
 
 const {
   safeExecuteJavaScript,
-  delay,
+  delay, // Keep basic delay for polling loop internal waits
+  delayWithSpinner, // Use the spinner version for step delays
   findAndClickElementByText,
-  DELAYS, // Import simplified delay constants
+  DELAYS,
 } = require("./auto-setup-utils");
 
 /**
@@ -31,14 +31,12 @@ async function setupPlayer2(appContext, inviteLink, p2Url) {
       return reject(new Error("V2 unavailable loading lobby."));
     }
     let successHandler, failHandler;
-
     const cleanupListeners = () => {
       if (successHandler)
         view2.webContents.removeListener("did-finish-load", successHandler);
       if (failHandler)
         view2.webContents.removeListener("did-fail-load", failHandler);
     };
-
     failHandler = (evt, code, desc) => {
       console.error(`P2 lobby load fail: ${desc} (${code})`);
       cleanupListeners();
@@ -69,7 +67,7 @@ async function setupPlayer2(appContext, inviteLink, p2Url) {
   console.log(
     `P2 Setup: Adding delay (${DELAYS.MEDIUM}ms) for page settlement after initial load...`
   );
-  await delay(DELAYS.MEDIUM); // Use MEDIUM
+  await delayWithSpinner(appContext, DELAYS.MEDIUM); // Use spinner delay
 
   // Switch view to P2
   console.log("P2 Setup Step 2 (Overall Step 7 cont.): Switching to View 2");
@@ -78,7 +76,7 @@ async function setupPlayer2(appContext, inviteLink, p2Url) {
     mainWindow.setBrowserView(view2);
     resizeView(view2);
   }
-  await delay(DELAYS.MEDIUM); // Use MEDIUM
+  await delayWithSpinner(appContext, DELAYS.MEDIUM); // Use spinner delay
 
   // Step 8: Click "Import New Deck" (Single attempt)
   console.log('P2 Setup Step 3 (Overall Step 8): Clicking "Import New Deck"');
@@ -88,17 +86,18 @@ async function setupPlayer2(appContext, inviteLink, p2Url) {
     "Import New Deck",
     "Click Import New Deck P2",
     "p, button",
-    elementFindTimeout // Use standard timeout
+    elementFindTimeout
   );
-  await delay(DELAYS.MEDIUM); // Use MEDIUM after click
+  await delayWithSpinner(appContext, DELAYS.MEDIUM); // Use spinner delay
 
   // Step 9: Wait for P2 deck input box
   console.log(
     "P2 Setup Step 4 (Overall Step 9): Waiting for P2 deck input box..."
   );
+  // Note: Polling loop doesn't use delayWithSpinner
   await new Promise((resolve, reject) => {
     let attempts = 0;
-    const maxAttempts = 60; // ~9 seconds
+    const maxAttempts = 60;
     const interval = setInterval(async () => {
       if (attempts++ >= maxAttempts) {
         clearInterval(interval);
@@ -131,9 +130,9 @@ async function setupPlayer2(appContext, inviteLink, p2Url) {
           reject(new Error(`Failed check P2 input: ${err.message}`));
         }
       }
-    }, DELAYS.POLL); // Use POLL constant
+    }, DELAYS.POLL);
   });
-  await delay(DELAYS.SHORT); // Use SHORT
+  await delayWithSpinner(appContext, DELAYS.SHORT); // Use spinner delay
 
   // Step 10: Fill P2 deck input
   console.log("P2 Setup Step 5 (Overall Step 10): Filling P2 deck input");
@@ -147,7 +146,7 @@ async function setupPlayer2(appContext, inviteLink, p2Url) {
     )}); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); console.log('P2 deck URL set on retry.'); return true; } else { console.error('P2 empty input (no placeholder) not found'); throw new Error('P2 empty input (no placeholder) not found'); } } })(); `,
     "Fill P2 Deck Input (No Placeholder)"
   );
-  await delay(DELAYS.MEDIUM); // Use MEDIUM
+  await delayWithSpinner(appContext, DELAYS.MEDIUM); // Use spinner delay
 
   // Step 11: Click "Import Deck" button
   console.log(
@@ -161,7 +160,7 @@ async function setupPlayer2(appContext, inviteLink, p2Url) {
     "button",
     elementFindTimeout
   );
-  await delay(DELAYS.LONG); // Use LONG
+  await delayWithSpinner(appContext, DELAYS.LONG); // Use spinner delay
 
   // Step 12: Click "Ready" button
   console.log('P2 Setup Step 7 (Overall Step 12): Clicking "Ready" button');
@@ -173,7 +172,7 @@ async function setupPlayer2(appContext, inviteLink, p2Url) {
     "button",
     elementFindTimeout
   );
-  await delay(DELAYS.MEDIUM); // Use MEDIUM
+  await delayWithSpinner(appContext, DELAYS.MEDIUM); // Use spinner delay
 
   console.log("--- Player 2 Setup Phase Complete ---");
 }
