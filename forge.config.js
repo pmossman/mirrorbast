@@ -4,7 +4,7 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 module.exports = {
   packagerConfig: {
     asar: true,
-    icon: 'assets/mirrorbast-' // Base name for icons
+    icon: 'assets/mirrorbast-icon' // Base name for icons
   },
   rebuildConfig: {},
   makers: [
@@ -22,7 +22,7 @@ module.exports = {
     {
       name: '@electron-forge/maker-deb',
       config: {
-        // options: { icon: 'assets/mirrorbast-icon.png' } // Optional icon for Debian package
+        options: { icon: 'assets/mirrorbast-icon.png' }, // Specific icon for DEB
       },
     },
   ],
