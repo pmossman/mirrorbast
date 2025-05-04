@@ -3,19 +3,12 @@ const { FusesPlugin } = require("@electron-forge/plugin-fuses");
 const { FuseV1Options, FuseVersion } = require("@electron/fuses");
 
 module.exports = {
-  /** -----------------------------------------------------------
-   *  Packaging options
-   *  -----------------------------------------------------------
-   *  Setting `identity: null` forces an ad‑hoc signature on macOS.
-   *  After the FusesPlugin mutates the Electron binary, Electron‑Forge
-   *  will re‑sign the bundle so Gatekeeper sees a valid signature.
-   *  (No Apple Developer account or certificates are required.)
-   */
+  
   packagerConfig: {
     asar: true,
     icon: "assets/mirrorbast-icon", // Base name (without extension)
     /** 🔑  Ad‑hoc signing on macOS, nothing on other platforms */
-    osxSign: { identity: '-' },
+    osxSign: {},
     // No osxNotarize block – we are intentionally *not* notarising
   },
 
