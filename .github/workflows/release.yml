@@ -1,0 +1,146 @@
+# .github/workflows/release.yml
+name: Build & Release Electron App
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push events but only for version tags (e.g., v1.0.0, v2.3.1)
+  push:
+    tags:
+      - 'v*.*.*'
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This job builds the application for different platforms
+  build:
+    # Use a matrix strategy to run the job on multiple OSes
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    # The type of runner that the job will run on based on the matrix OS
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      # 1. Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Sets up Node.js environment
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Use a Node.js version compatible with your Electron version
+          cache: 'npm' # Enable caching for npm dependencies
+
+      # 3. Install dependencies
+      # Using 'npm ci' is generally recommended in CI for faster, reliable installs
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Build the application using Electron Forge
+      # This command reads your package.json config and builds for the current OS
+      - name: Build application
+        run: npm run make
+        env:
+          # Optional: Required for macOS code signing/notarization if set up
+          # CSC_LINK: ${{ secrets.CSC_LINK }}
+          # CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          # APPLE_ID: ${{ secrets.APPLE_ID }}
+          # APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed for some makers/publishers
+
+      # 5. Upload Artifacts for the Release
+      # Find the built files in the 'out/make' directory and upload them
+      # Use wildcards to match generated file names
+      - name: Upload Release Assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts-${{ matrix.os }} # Unique name for artifacts from each OS
+          path: | # Use multi-line path specification
+            out/make/**/*.exe # Windows installer
+            out/make/**/*.zip # macOS zip
+            out/make/**/*.deb # Linux deb
+            # Add other formats if needed (e.g., out/make/**/*.dmg for macOS DMG maker)
+          if-no-files-found: error # Fail the step if no files are found
+
+  # This job creates a GitHub Release and uploads the built artifacts from the 'build' job
+  release:
+    # This job depends on the 'build' job completing successfully for all OSes
+    needs: build
+    runs-on: ubuntu-latest # Can run on any OS, Ubuntu is common/cheap
+
+    permissions:
+      contents: write # Needed to create releases and upload assets
+
+    steps:
+      # 1. Download all build artifacts from the previous job
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts # Download all artifacts into an 'artifacts' directory
+
+      # 2. List downloaded files (for debugging)
+      - name: List downloaded files
+        run: find artifacts -type f
+
+      # 3. Create GitHub Release
+      # Uses the tag that triggered the workflow as the release name/tag
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }} # Gets the tag name (e.g., v1.0.0)
+          release_name: Release ${{ github.ref_name }}
+          body: | # Optional: Add release notes here
+            Automated release for ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+
+      # 4. Upload assets to the GitHub Release
+      # Find files within the downloaded artifacts subdirectories and upload them
+      - name: Upload Release Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # URL from the 'create_release' step
+          asset_path: ${{ item }} # Path to the asset to upload (set by matrix below)
+          asset_name: ${{ GITHUB_REF_NAME }}-${{ matrix.os }}-${{ matrix.asset_suffix }} # Example: v1.0.0-windows-latest-installer.exe
+          asset_content_type: application/octet-stream # Generic content type
+    strategy:
+      matrix: # Define a matrix to iterate through potential artifact files
+        asset_info:
+          - { os: 'windows-latest', suffix: 'installer.exe', path_glob: 'artifacts/build-artifacts-windows-latest/**/*.exe' }
+          - { os: 'macos-latest', suffix: 'app.zip', path_glob: 'artifacts/build-artifacts-macos-latest/**/*.zip' }
+          - { os: 'ubuntu-latest', suffix: 'amd64.deb', path_glob: 'artifacts/build-artifacts-ubuntu-latest/**/*.deb' }
+          # Add other formats if needed, ensuring the glob pattern is correct
+          # - { os: 'ubuntu-latest', suffix: 'x86_64.rpm', path_glob: 'artifacts/build-artifacts-ubuntu-latest/**/*.rpm' }
+
+    # This step finds the actual file path matching the glob pattern for the current matrix item
+    # It's a bit complex but necessary because the exact filename might vary slightly
+    - name: Get asset path for ${{ matrix.asset_info.os }}
+      id: set_asset_path
+      run: |
+        asset_path=$(find ${{ matrix.asset_info.path_glob }} -type f | head -n 1)
+        if [ -z "$asset_path" ]; then
+          echo "No asset found for glob ${{ matrix.asset_info.path_glob }}"
+          # Optionally fail the job: exit 1
+        else
+          echo "asset_path=${asset_path}" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+
+    # Upload only if a file path was found in the previous step
+    - name: Upload ${{ matrix.asset_info.os }} Asset
+      if: steps.set_asset_path.outputs.asset_path != '' # Only run if asset_path is not empty
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ${{ steps.set_asset_path.outputs.asset_path }}
+        # Construct a more predictable asset name: mirrorbast-v1.0.0-windows.exe
+        asset_name: mirrorbast-${{ github.ref_name }}-${{ matrix.asset_info.os }}.${{ matrix.asset_info.suffix }}
+        asset_content_type: application/octet-stream
