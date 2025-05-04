@@ -3,9 +3,9 @@
 
 // --- Simplified Delay Constants (in milliseconds) ---
 const DELAYS = {
-  SHORT: 200,
-  MEDIUM: 500,
-  LONG: 2500,
+  SHORT: 50,
+  MEDIUM: 100,
+  LONG: 200,
   POLL: 150,
 };
 

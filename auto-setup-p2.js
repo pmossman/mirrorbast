@@ -18,7 +18,10 @@ const {
  * @throws {Error} If any step fails.
  */
 async function setupPlayer2(appContext, inviteLink, p2Url) {
-  await delayWithSpinner(appContext, DELAYS.LONG); // Give the lobby some time to settle
+  setTimeout(() => {
+    
+  }, 500);
+  await delayWithSpinner(appContext, DELAYS.MEDIUM); // Give the lobby some time to settle
 
   const { view2, mainWindow, setCurrentView, resizeView } = appContext;
   const elementFindTimeout = 7000; // Standard timeout for finding elements

@@ -21,7 +21,6 @@ const HEADER_HEIGHT = 60;
 const FOOTER_HEIGHT = 50;
 const BORDER_WIDTH = 3;
 
-// *** NEW: Placeholder HTML for View 2 ***
 const PLACEHOLDER_HTML_DATA_URI = `data:text/html;charset=UTF-8,${encodeURIComponent(`
 <!DOCTYPE html>
 <html lang="en">
@@ -30,37 +29,10 @@ const PLACEHOLDER_HTML_DATA_URI = `data:text/html;charset=UTF-8,${encodeURICompo
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Waiting</title>
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #1a1a1a; /* Dark background */
-            color: #cccccc; /* Light text */
-            font-family: 'Barlow', sans-serif; /* Match app font */
-            font-size: 1.2em;
-            text-align: center;
-            overflow: hidden;
-        }
-        .container {
-            padding: 20px;
-        }
-        /* Optional: Add a subtle spinner */
-        .spinner {
-            border: 4px solid rgba(204, 204, 204, 0.3);
-            border-radius: 50%;
-            border-top-color: #cccccc;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px auto; /* Center and add space below */
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background-color: #1a1a1a; color: #cccccc; font-family: 'Barlow', sans-serif; font-size: 1.2em; text-align: center; overflow: hidden; }
+        .container { padding: 20px; }
+        .spinner { border: 4px solid rgba(204, 204, 204, 0.3); border-radius: 50%; border-top-color: #cccccc; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px auto; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -82,7 +54,7 @@ let currentView = 1;
 let currentSidebarWidth = DEFAULT_SIDEBAR_WIDTH;
 let gameViewsVisible = true;
 let isSpacebarShortcutGloballyEnabled = true;
-// Removed AbortController and Progress state variables
+let allowPlayerSwitch = false; // Single flag to control switching
 
 /** Safely gets main window webContents if available */
 function getMainWindowWebContents() {
@@ -97,14 +69,25 @@ function getMainWindowWebContents() {
   return null;
 }
 
+/** Updates the renderer UI based on the allowPlayerSwitch state */
+function updateRendererSwitchState(allowed) {
+    const wc = getMainWindowWebContents();
+    if (wc) {
+        // console.log(`Sending set-switching-allowed: ${allowed}`);
+        wc.send("set-switching-allowed", allowed);
+    }
+}
+
 /** Creates the main application window and sets up BrowserViews. */
 function createWindow() {
   currentSidebarWidth = DEFAULT_SIDEBAR_WIDTH;
   gameViewsVisible = true;
   isSpacebarShortcutGloballyEnabled = true;
+  allowPlayerSwitch = false; // Initialize as false
+  currentView = 1;
 
   mainWindow = new BrowserWindow({
-    /* ... browser window options ... */ width: 1200,
+    width: 1200,
     height: 800,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -143,7 +126,7 @@ function createWindow() {
   view1.webContents
     .loadURL("https://karabast.net")
     .catch((err) => console.error("Error initiating load for View 1:", err));
-  // *** Load placeholder into View 2 initially ***
+
   console.log("Loading placeholder URL for View 2...");
   view2.webContents
     .loadURL(PLACEHOLDER_HTML_DATA_URI)
@@ -157,26 +140,20 @@ function createWindow() {
       if (view1 && !view1.webContents.isDestroyed()) resizeView(view1);
       if (view2 && !view2.webContents.isDestroyed()) resizeView(view2);
       wc.send("player-switched", currentView);
+      updateRendererSwitchState(allowPlayerSwitch); // Send initial state
     }
   }, 150);
 
-  // DevTools & Logging
-  // view1.webContents.openDevTools({ mode: 'detach' });
-  view1.webContents.on("console-message", (e, level, message) =>
-    console.log("[VIEW1]", message)
-  );
-  // view2.webContents.openDevTools({ mode: 'detach' });
-  view2.webContents.on("console-message", (e, level, message) =>
-    console.log("[VIEW2]", message)
-  );
+  view1.webContents.on("console-message", (e, level, message) => console.log("[VIEW1]", message));
+  view2.webContents.on("console-message", (e, level, message) => console.log("[VIEW2]", message));
 
-  // Window Event Handling
   mainWindow.on("resize", () => {
     if (view1 && !view1.webContents.isDestroyed()) resizeView(view1);
     if (view2 && !view2.webContents.isDestroyed()) resizeView(view2);
   });
   mainWindow.on("closed", () => {
     mainWindow = null;
+    allowPlayerSwitch = false; // Reset on close
   });
 }
 
@@ -185,6 +162,11 @@ function registerSpaceShortcut() {
   if (!isSpacebarShortcutGloballyEnabled) return;
   if (!globalShortcut.isRegistered("Space")) {
     const ret = globalShortcut.register("Space", () => {
+      if (!allowPlayerSwitch) {
+        console.log("[Main] Spacebar pressed, but switching disallowed.");
+        return;
+      }
+
       const wc = getMainWindowWebContents();
       if (wc) {
         if (gameViewsVisible) {
@@ -205,61 +187,38 @@ function unregisterSpaceShortcut() {
 
 /** Resizes and positions the given BrowserView within the main window, accounting for border. */
 function resizeView(view) {
-  if (!mainWindow || !view?.webContents || view.webContents.isDestroyed())
-    return;
-  if (!gameViewsVisible) {
-    try {
-      view.setBounds({ x: 0, y: HEADER_HEIGHT, width: 0, height: 0 });
-    } catch (error) {
-      if (!error.message.includes("destroyed"))
-        console.error("Error setting hidden bounds:", error);
+    if (!mainWindow || !view?.webContents || view.webContents.isDestroyed()) return;
+    if (!gameViewsVisible) {
+        try {
+        if (!view.webContents.isDestroyed()) view.setBounds({ x: 0, y: HEADER_HEIGHT, width: 0, height: 0 });
+        } catch (error) { if (!error.message.includes("destroyed")) console.error("Error setting hidden bounds:", error); }
+        return;
     }
-    return;
-  }
-  try {
-    const [windowWidth, windowHeight] = mainWindow.getContentSize();
-    const contentAreaX =
-      currentSidebarWidth <= COLLAPSED_SIDEBAR_WIDTH ? 0 : currentSidebarWidth;
-    const contentAreaY = HEADER_HEIGHT;
-    const contentAreaWidth = Math.max(1, windowWidth - contentAreaX);
-    const contentAreaHeight = Math.max(
-      1,
-      windowHeight - contentAreaY - FOOTER_HEIGHT
-    );
-    const viewX = contentAreaX + BORDER_WIDTH;
-    const viewY = contentAreaY + BORDER_WIDTH;
-    const viewWidth = Math.max(1, contentAreaWidth - 2 * BORDER_WIDTH);
-    const viewHeight = Math.max(1, contentAreaHeight - 2 * BORDER_WIDTH);
-    if (viewWidth <= 1 || viewHeight <= 1) return;
-    view.setBounds({
-      x: viewX,
-      y: viewY,
-      width: viewWidth,
-      height: viewHeight,
-    });
-  } catch (error) {
-    if (!error.message.includes("destroyed"))
-      console.error("Error resizing view:", error);
-  }
+    try {
+        const [windowWidth, windowHeight] = mainWindow.getContentSize();
+        const contentAreaX = currentSidebarWidth <= COLLAPSED_SIDEBAR_WIDTH ? 0 : currentSidebarWidth;
+        const contentAreaY = HEADER_HEIGHT;
+        const contentAreaWidth = Math.max(1, windowWidth - contentAreaX);
+        const contentAreaHeight = Math.max(1, windowHeight - contentAreaY - FOOTER_HEIGHT);
+        const viewX = contentAreaX + BORDER_WIDTH;
+        const viewY = contentAreaY + BORDER_WIDTH;
+        const viewWidth = Math.max(1, contentAreaWidth - 2 * BORDER_WIDTH);
+        const viewHeight = Math.max(1, contentAreaHeight - 2 * BORDER_WIDTH);
+        if (viewWidth <= 1 || viewHeight <= 1) return;
+        if (!view.webContents.isDestroyed()) view.setBounds({ x: viewX, y: viewY, width: viewWidth, height: viewHeight });
+    } catch (error) { if (!error.message.includes("destroyed")) console.error("Error resizing view:", error); }
 }
 
 /** Updates the current active view state variable. */
 function setCurrentView(viewNum) {
-  if (viewNum === 1 || viewNum === 2) {
-    currentView = viewNum;
-  } else {
-    console.error(`Invalid view number passed to setCurrentView: ${viewNum}`);
-  }
+    if (viewNum === 1 || viewNum === 2) { currentView = viewNum; }
+    else { console.error(`Invalid view number passed to setCurrentView: ${viewNum}`); }
 }
 
 /** Function to reset progress bar state and notify renderer */
 function resetAndHideProgress() {
-  // Simplified: Just tell renderer to hide, no state needed here
-  const wc = getMainWindowWebContents();
-  if (wc) {
-    // console.log("[Main] Sending hide-spinner to renderer during reset/error.");
-    wc.send("hide-spinner");
-  }
+    const wc = getMainWindowWebContents();
+    if (wc) { wc.send("hide-spinner"); }
 }
 
 // --- IPC Handlers ---
@@ -267,43 +226,23 @@ function resetAndHideProgress() {
 ipcMain.handle("read-clipboard", () => clipboard.readText());
 
 ipcMain.handle("fetch-metadata", async (_, url) => {
-  /* ... fetch logic ... */
-  if (typeof fetch !== "function")
-    return { name: "Setup Error", author: "N/A" };
-  try {
-    if (!url || !(url.startsWith("http://") || url.startsWith("https://")))
-      throw new Error("Invalid URL");
-    const response = await fetch(
-      `https://karabast.net/api/swudbdeck?deckLink=${encodeURIComponent(url)}`,
-      {
-        method: "GET",
-        headers: { Accept: "application/json", "User-Agent": "Mirrorbast/1.0" },
-        timeout: 15000,
-      }
-    );
-    if (!response.ok) {
-      const errorBody = await response.text().catch(() => "");
-      throw new Error(
-        `API request failed: ${response.status} Body: ${errorBody}`
-      );
-    }
-    const data = await response.json();
-    if (data?.metadata?.name !== undefined) {
-      return {
-        name: data.metadata.name || "Unnamed",
-        author: data.metadata.author || "Unknown",
-      };
-    } else {
-      return { name: "Invalid Metadata", author: "N/A" };
-    }
-  } catch (error) {
-    console.error(`Fetch metadata error for ${url}:`, error);
-    return { name: error.name || "Fetch Error", author: "N/A" };
-  }
+    if (typeof fetch !== "function") return { name: "Setup Error", author: "N/A" };
+    try {
+        if (!url || !(url.startsWith("http://") || url.startsWith("https://"))) throw new Error("Invalid URL");
+        const response = await fetch(`https://karabast.net/api/swudbdeck?deckLink=${encodeURIComponent(url)}`, { method: "GET", headers: { Accept: "application/json", "User-Agent": "Mirrorbast/1.0" }, timeout: 15000 });
+        if (!response.ok) { const errorBody = await response.text().catch(() => ""); throw new Error(`API request failed: ${response.status} Body: ${errorBody}`); }
+        const data = await response.json();
+        if (data?.metadata?.name !== undefined) { return { name: data.metadata.name || "Unnamed", author: data.metadata.author || "Unknown" }; }
+        else { return { name: "Invalid Metadata", author: "N/A" }; }
+    } catch (error) { console.error(`Fetch metadata error for ${url}:`, error); return { name: error.name || "Fetch Error", author: "N/A" }; }
 });
 
 ipcMain.on("switch-player", async () => {
-  /* ... switch logic ... */
+  if (!allowPlayerSwitch) {
+    console.log("Switch player ignored: Switching disallowed.");
+    return;
+  }
+
   if (!gameViewsVisible)
     return console.log("Switch player ignored: Game views not visible.");
 
@@ -312,25 +251,29 @@ ipcMain.on("switch-player", async () => {
   const activeView = nextViewNum === 1 ? view1 : view2;
   const inactiveView = nextViewNum === 1 ? view2 : view1;
   if (
-    mainWindow &&
-    activeView?.webContents &&
-    !activeView.webContents.isDestroyed()
+    mainWindow && !mainWindow.isDestroyed() &&
+    activeView?.webContents && !activeView.webContents.isDestroyed()
   ) {
     setCurrentView(nextViewNum);
-    mainWindow.setBrowserView(activeView);
-    resizeView(activeView);
-    resizeView(nextViewNum === 1 ? view2 : view1);
+
+    try {
+        mainWindow.removeBrowserView(activeView);
+        if (inactiveView && !inactiveView.webContents.isDestroyed()) mainWindow.setBrowserView(inactiveView);
+        await delay(30);
+        mainWindow.addBrowserView(activeView)
+        mainWindow.setBrowserView(activeView);
+        resizeView(activeView);
+        activeView.webContents.focus();
+    } catch(error) {
+         console.error(`Error during remove/add view hack:`, error);
+         if (mainWindow && !mainWindow.isDestroyed() && activeView && !activeView.webContents.isDestroyed()) {
+            mainWindow.setBrowserView(activeView);
+            resizeView(activeView);
+            activeView.webContents.focus();
+         }
+    }
+
     const wc = getMainWindowWebContents();
-
-    // briefly deactivate and reactivate to fix mouse hover events
-    mainWindow.removeBrowserView(activeView);
-    mainWindow.setBrowserView(inactiveView);
-    await delay(30);
-    mainWindow.addBrowserView(activeView)
-    mainWindow.setBrowserView(activeView);
-    resizeView(activeView);
-    activeView.webContents.focus();
-
     if (wc) {
       wc.send("player-switched", nextViewNum);
     }
@@ -341,21 +284,17 @@ ipcMain.on("switch-player", async () => {
 
 ipcMain.on("reset-phase", (event) => {
   console.log("Resetting application views...");
-  // Removed AbortController logic
-  resetAndHideProgress(); // Ensure spinner hidden
+  allowPlayerSwitch = false; // Disallow switching on reset
+  resetAndHideProgress();
+  updateRendererSwitchState(false); // Notify renderer
 
   if (!gameViewsVisible) {
-    /* ... make views visible ... */
     gameViewsVisible = true;
     if (view1 && !view1.webContents.isDestroyed()) resizeView(view1);
     if (view2 && !view2.webContents.isDestroyed()) resizeView(view2);
   }
-
-  let view1Loaded = false,
-    view2Loaded = false,
-    errors = [];
+  let view1Loaded = false, view2Loaded = false, errors = [];
   const checkCompletion = () => {
-    /* ... check completion logic ... */
     if (!view1Loaded || !view2Loaded) return;
     if (errors.length === 0) {
       console.log("Views reloaded successfully after reset.");
@@ -375,12 +314,7 @@ ipcMain.on("reset-phase", (event) => {
       event.reply("reset-success");
     } else {
       console.error("Reset error (view reloads):", errors.join("; "));
-      if (
-        mainWindow &&
-        view1?.webContents &&
-        !view1.webContents.isDestroyed() &&
-        !errors.some((e) => e.includes("V1"))
-      ) {
+      if (mainWindow && view1?.webContents && !view1.webContents.isDestroyed() && !errors.some((e) => e.includes("V1"))) {
         setCurrentView(1);
         currentSidebarWidth = DEFAULT_SIDEBAR_WIDTH;
         gameViewsVisible = true;
@@ -396,82 +330,44 @@ ipcMain.on("reset-phase", (event) => {
       event.reply("reset-error", `Failed view reload: ${errors.join("; ")}`);
     }
   };
-
-  // Reload View 1 to home
   if (view1?.webContents && !view1.webContents.isDestroyed()) {
-    view1.webContents
-      .loadURL("https://karabast.net")
-      .then(() => {
-        view1Loaded = true;
-      })
-      .catch((err) => {
-        errors.push("V1:" + err.message);
-        view1Loaded = true;
-      })
-      .finally(checkCompletion);
-  } else {
-    errors.push("V1 unavailable");
-    view1Loaded = true;
-    checkCompletion();
-  }
-
-  // *** Load placeholder into View 2 on reset ***
+    view1.webContents.loadURL("https://karabast.net").then(() => { view1Loaded = true; }).catch((err) => { errors.push("V1:" + err.message); view1Loaded = true; }).finally(checkCompletion);
+  } else { errors.push("V1 unavailable"); view1Loaded = true; checkCompletion(); }
   if (view2?.webContents && !view2.webContents.isDestroyed()) {
-    console.log("Loading placeholder URL for View 2 during reset...");
-    view2.webContents
-      .loadURL(PLACEHOLDER_HTML_DATA_URI)
-      .then(() => {
-        view2Loaded = true;
-      })
-      .catch((err) => {
-        errors.push("V2 Placeholder:" + err.message);
-        view2Loaded = true;
-      })
-      .finally(checkCompletion);
-  } else {
-    errors.push("V2 unavailable");
-    view2Loaded = true;
-    checkCompletion();
-  }
+    view2.webContents.loadURL(PLACEHOLDER_HTML_DATA_URI).then(() => { view2Loaded = true; }).catch((err) => { errors.push("V2 Placeholder:" + err.message); view2Loaded = true; }).finally(checkCompletion);
+  } else { errors.push("V2 unavailable"); view2Loaded = true; checkCompletion(); }
 });
 
 // --- Auto Setup Handler ---
 ipcMain.on("auto-setup", async (event, p1Url, p2Url) => {
+  let setupSucceeded = false; // Track success locally
   console.log("Received 'auto-setup' request.");
-  // Removed AbortController logic
+  allowPlayerSwitch = false; // Disallow switching during setup
+  updateRendererSwitchState(false); // Notify renderer
 
-  // Ensure Player 1 is active before starting
   if (currentView !== 1) {
-    /* ... switch to P1 ... */
     console.log("Auto-setup initiated: Switching to Player 1 view first.");
     const targetView = view1;
-    if (
-      mainWindow &&
-      targetView?.webContents &&
-      !targetView.webContents.isDestroyed()
-    ) {
+    if (mainWindow && targetView?.webContents && !targetView.webContents.isDestroyed()) {
       setCurrentView(1);
       mainWindow.setBrowserView(targetView);
       resizeView(targetView);
       if (view2 && !view2.webContents.isDestroyed()) resizeView(view2);
       const wc = getMainWindowWebContents();
-      if (wc) {
-        wc.send("player-switched", 1);
-      }
+      if (wc) { wc.send("player-switched", 1); }
       await delay(200);
       console.log("Switched to Player 1 view.");
     } else {
       console.error("Cannot switch to Player 1 view before auto-setup.");
       event.reply("auto-setup-error", "Cannot switch to Player 1 view.");
-      return; // Exit early
+      updateRendererSwitchState(allowPlayerSwitch); // Send final (false) state
+      return;
     }
   } else {
     console.log("Player 1 already active for auto-setup.");
   }
 
-  // Ensure views are visible
   if (!gameViewsVisible) {
-    /* ... make views visible ... */
     console.log("Making game views visible before auto-setup.");
     gameViewsVisible = true;
     if (view1 && !view1.webContents.isDestroyed()) resizeView(view1);
@@ -479,85 +375,65 @@ ipcMain.on("auto-setup", async (event, p1Url, p2Url) => {
     await delay(100);
   }
 
-  // Ensure sidebar is expanded
   if (currentSidebarWidth <= COLLAPSED_SIDEBAR_WIDTH) {
-    /* ... expand sidebar ... */
     console.log("Ensuring sidebar expanded before auto-setup.");
     currentSidebarWidth = DEFAULT_SIDEBAR_WIDTH;
     if (view1 && !view1.webContents.isDestroyed()) resizeView(view1);
     if (view2 && !view2.webContents.isDestroyed()) resizeView(view2);
     const wc = getMainWindowWebContents();
-    if (wc) {
-      wc.send("set-sidebar-collapsed", false);
-    }
+    if (wc) { wc.send("set-sidebar-collapsed", false); }
     await delay(200);
   }
 
-  // Prepare context (no signal needed)
   const appContext = {
-    view1,
-    view2,
-    mainWindow,
-    clipboard,
-    setCurrentView,
-    resizeView,
-    getCurrentView: () => currentView,
+    view1, view2, mainWindow, clipboard,
+    setCurrentView, resizeView, getCurrentView: () => currentView,
   };
 
   try {
     await performAutoSetup(event, p1Url, p2Url, appContext);
-    console.log("performAutoSetup process completed.");
+    // If performAutoSetup completes without error, it means it sent 'lobby-success'
+    console.log("performAutoSetup completed successfully.");
+    setupSucceeded = true; // Mark as success
   } catch (error) {
     console.error("Error during performAutoSetup orchestration:", error);
-    if (!event.sender.isDestroyed()) {
-      event.reply(
-        "auto-setup-error",
-        error.message ||
-          "An unexpected error occurred during setup orchestration."
-      );
-    }
-    resetAndHideProgress(); // Ensure progress hidden on error
+    // Error reply is handled within performAutoSetup
+    // setupSucceeded remains false
   } finally {
     console.log("Auto-setup finished.");
-    resetAndHideProgress(); // Ensure progress hidden on normal completion
+    resetAndHideProgress();
+    // Set the final state based on whether setup succeeded
+    allowPlayerSwitch = setupSucceeded;
+    updateRendererSwitchState(allowPlayerSwitch);
   }
 });
 
 // --- Sidebar State Handler ---
 ipcMain.on("sidebar-state-change", (event, isCollapsed) => {
-  /* ... resize views ... */
-  currentSidebarWidth = isCollapsed
-    ? COLLAPSED_SIDEBAR_WIDTH
-    : DEFAULT_SIDEBAR_WIDTH;
+  currentSidebarWidth = isCollapsed ? COLLAPSED_SIDEBAR_WIDTH : DEFAULT_SIDEBAR_WIDTH;
   if (view1 && !view1.webContents.isDestroyed()) resizeView(view1);
   if (view2 && !view2.webContents.isDestroyed()) resizeView(view2);
 });
 
 // --- Game View Visibility Handler ---
 ipcMain.on("set-game-views-visibility", (event, visible) => {
-  /* ... show/hide views ... */
   if (gameViewsVisible === visible) return;
   gameViewsVisible = visible;
   if (visible) {
     if (view1 && !view1.webContents.isDestroyed()) resizeView(view1);
     if (view2 && !view2.webContents.isDestroyed()) resizeView(view2);
     const activeView = currentView === 1 ? view1 : view2;
-    if (mainWindow && activeView) mainWindow.setBrowserView(activeView);
+    if (mainWindow && activeView && !activeView.webContents.isDestroyed()) mainWindow.setBrowserView(activeView);
   } else {
     try {
-      if (view1 && !view1.webContents.isDestroyed())
-        view1.setBounds({ x: 0, y: HEADER_HEIGHT, width: 0, height: 0 });
-      if (view2 && !view2.webContents.isDestroyed())
-        view2.setBounds({ x: 0, y: HEADER_HEIGHT, width: 0, height: 0 });
-    } catch (error) {
-      console.error("Error setting zero bounds:", error);
-    }
+      if (view1 && !view1.webContents.isDestroyed()) view1.setBounds({ x: 0, y: HEADER_HEIGHT, width: 0, height: 0 });
+      if (view2 && !view2.webContents.isDestroyed()) view2.setBounds({ x: 0, y: HEADER_HEIGHT, width: 0, height: 0 });
+    } catch (error) { console.error("Error setting zero bounds:", error); }
   }
 });
 
 // --- Spacebar Shortcut Toggle Handler ---
 ipcMain.on("toggle-spacebar-shortcut", (event, enabled) => {
-  /* ... register/unregister ... */
   isSpacebarShortcutGloballyEnabled = enabled;
   if (mainWindow?.isFocused()) {
     if (enabled) registerSpaceShortcut();
@@ -567,50 +443,31 @@ ipcMain.on("toggle-spacebar-shortcut", (event, enabled) => {
 
 // --- External URL Handler ---
 ipcMain.on("open-external-url", (event, url) => {
-  /* ... open url ... */
   if (url && (url.startsWith("http:") || url.startsWith("https:"))) {
-    shell
-      .openExternal(url)
-      .catch((err) =>
-        console.error(`Failed to open external URL "${url}":`, err)
-      );
-  } else {
-    console.warn(`Attempted to open invalid external URL: ${url}`);
-  }
+    shell.openExternal(url).catch((err) => console.error(`Failed to open external URL "${url}":`, err));
+  } else { console.warn(`Attempted to open invalid external URL: ${url}`); }
 });
 
-// Removed Progress Bar State Management Handlers
 
 // --- Electron App Lifecycle ---
 app.whenReady().then(() => {
   createWindow();
-  registerSpaceShortcut();
+  registerSpaceShortcut(); // Initial registration attempt
 });
 app.on("browser-window-focus", () => {
   if (isSpacebarShortcutGloballyEnabled) registerSpaceShortcut();
   else unregisterSpaceShortcut();
 });
-app.on("browser-window-blur", () => {
-  unregisterSpaceShortcut();
-});
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
-});
+app.on("browser-window-blur", () => { unregisterSpaceShortcut(); });
+app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
   if (isSpacebarShortcutGloballyEnabled) registerSpaceShortcut();
 });
-app.on("will-quit", () => {
-  unregisterSpaceShortcut(); /* No AbortController */
-});
-app.on("gpu-process-crashed", (event, killed) =>
-  console.error(`GPU crash! Killed: ${killed}`)
-);
+app.on("will-quit", () => { unregisterSpaceShortcut(); allowPlayerSwitch = false; });
+app.on("gpu-process-crashed", (event, killed) => console.error(`GPU crash! Killed: ${killed}`));
 app.on("renderer-process-crashed", (event, webContents, killed) => {
-  /* ... error logging ... */
-  console.error(
-    `Renderer crash! URL: ${webContents?.getURL()}, Killed: ${killed}`
-  );
+  console.error(`Renderer crash! URL: ${webContents?.getURL()}, Killed: ${killed}`);
   const viewId = webContents?.id;
   let viewName = "Unknown";
   if (viewId) {
@@ -619,4 +476,6 @@ app.on("renderer-process-crashed", (event, webContents, killed) => {
     else if (mainWindow?.webContents.id === viewId) viewName = "Main Window";
   }
   console.error(`${viewName} renderer crashed.`);
+  allowPlayerSwitch = false; // Reset state on crash
+  updateRendererSwitchState(false); // Notify renderer
 });

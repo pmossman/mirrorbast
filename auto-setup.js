@@ -37,7 +37,7 @@ async function performAutoSetup(event, p1Url, p2Url, context) {
       "auto-setup-error",
       "Required browser views are not initialized."
     );
-    return;
+    return; // Exit early
   }
 
   try {
@@ -56,9 +56,11 @@ async function performAutoSetup(event, p1Url, p2Url, context) {
     // --- Success ---
     console.log("Auto-setup process completed successfully.");
     event.reply("lobby-success"); // Indicate game setup is done
+
   } catch (error) {
     // --- Error Handling ---
     console.error("Auto-setup failed during orchestration:", error);
+    // Don't set game ready on error
     event.reply(
       "auto-setup-error",
       error.message || "An unknown error occurred during auto-setup."
@@ -68,10 +70,9 @@ async function performAutoSetup(event, p1Url, p2Url, context) {
     try {
       const currentViewNum = getCurrentView(); // Use the function from context
       if (
-        mainWindow &&
+        mainWindow && !mainWindow.isDestroyed() &&
         currentViewNum !== 1 &&
-        view1 &&
-        !view1.webContents.isDestroyed()
+        view1 && !view1.webContents.isDestroyed()
       ) {
         console.log("Switching back to V1 after error.");
         setCurrentView(1);
@@ -82,14 +83,14 @@ async function performAutoSetup(event, p1Url, p2Url, context) {
         }
       }
       // Ensure sidebar is expanded after error
-      if (mainWindow?.webContents && !mainWindow.webContents.isDestroyed()) {
-        mainWindow.webContents.send("set-sidebar-collapsed", false);
+      const wc = mainWindow?.webContents;
+      if (wc && !wc.isDestroyed()) {
+        wc.send("set-sidebar-collapsed", false);
       }
     } catch (resetError) {
       console.error("Failed to reset view state after error:", resetError);
     }
   }
-  // Note: No 'finally { appContext = null; }' needed here as context is passed in.
 }
 
 // Export the main orchestrator function
