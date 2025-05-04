@@ -2,6 +2,8 @@
 
 Mirrorbast is a simple desktop application designed to wrap the web-based card game client Karabast so that it can be played by a single player using two decks, with easy setup and switching between both sides of the table for deck-testing purposes.
 
+![Mirrorbast Application Preview](assets/mirrorbast-preview.png) 
+
 ## How to Use
 
 * When the Mirrorbast application starts, you'll see two inputs for SWUDB deck urls (one for each "player"). 
