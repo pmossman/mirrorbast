@@ -4,7 +4,8 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 module.exports = {
   packagerConfig: {
     asar: true,
-    icon: 'assets/mirrorbast-icon' // Base name for icons
+    icon: 'assets/mirrorbast-icon', // Base name for icons
+    osxSign: {} // empty object for default signing
   },
   rebuildConfig: {},
   makers: [
