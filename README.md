@@ -23,6 +23,10 @@ I vibe coded this thing with AI over two days of paternity leave while taking ca
 
 Use this software with the understanding that it's an early experiment. Feel free to report issues or contribute if you're interested!
 
+## Untrusted Application Warnings
+
+I do not have a paid developer license, so I cannot publish this application as a signed, trusted app. Depending on your platform, you'll likely see some kind of safety warning about the application not being trusted. I've included instructions below for each platform that will let you proceed despite the warning. Obviously proceed at your own risk, but just know that the warning is expected. Even as the app developer, I also have to bypass the security warning to run the app on my own machine.
+
 ## Installation
 
 The easiest way to install Mirrorbast is to download the latest release for your operating system from the **[Releases Page](https://github.com/pmossman/mirrorbast/releases)** on GitHub.
@@ -47,13 +51,15 @@ Find the release corresponding to the version you want (usually the latest) and 
 #### macOS
 
 1.  Download the `mirrorbast-vX.Y.Z-macos-arm64.zip` file.
-2.  Double-click the downloaded `.zip` file to extract the `Mirrorbast.app` application bundle (usually extracts to the same folder, e.g., Downloads).
-3.  **Drag the `Mirrorbast.app` icon into your Applications folder.**
-4.  **First Launch (Gatekeeper Bypass):** macOS Gatekeeper will likely prevent the app from opening initially because it's from an unidentified developer and hasn't been notarized by Apple. You will probably see a warning like ""Mirrorbast" can't be opened because it is from an unidentified developer".
-    * **Right-click** (or Control-click) the Mirrorbast application icon in your Applications folder.
-    * Select **"Open"** from the context menu.
-    * You might see the same warning again, but this time there should be an **"Open"** button. Click it.
-    * You should only need to do this the first time you run this specific version. *(The "damaged" error and the `xattr` command should no longer be necessary with the ZIP distribution).*
+2.  Double-click the downloaded `.zip` file to extract its contents. You should see `Mirrorbast.app` and a script file named `Fix Mirrorbast Permissions.command`.
+3.  **Drag *both* `Mirrorbast.app` and `Fix Mirrorbast Permissions.command` into your Applications folder.** (Keeping them together is important for the script to work).
+4.  **Run the Fix Script:** Due to macOS Gatekeeper security settings, you will likely see an error message saying **""Mirrorbast" is damaged and can’t be opened..."** if you try to run the app directly. To fix this:
+    * **Double-click the `Fix Mirrorbast Permissions.command` file** inside your Applications folder.
+    * macOS may warn you that this is a script downloaded from the internet. Click **"Open"** if prompted.
+    * A Terminal window will open and run the command. It should print "Permissions potentially fixed!". Press Enter to close the Terminal window when it's done.
+    * *(Troubleshooting: If double-clicking the `.command` file doesn't work or gives an error, you might need to right-click it, select "Open With", choose "Terminal.app", and then click "Open" on the warning dialog.)*
+5.  **Launch Mirrorbast:** After running the fix script successfully, you should be able to double-click `Mirrorbast.app` to open it.
+    * **Note:** You *might* still need to perform the standard **right-click -> Open** procedure the very first time you launch the app after running the fix script if you see an "unidentified developer" warning.
 
 #### Linux (Debian/Ubuntu)
 
@@ -80,4 +86,4 @@ If you want to build or modify the application yourself:
 2.  Navigate into the directory: `cd mirrorbast`
 3.  Install dependencies: `npm install`
 4.  Run in development mode: `npm start`
-5.  Build distributables: `npm run make` (requires the appropriate build environment for the target OS).
+5.  Build distributables: `npm run dist` (uses electron-builder).
