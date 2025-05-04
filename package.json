@@ -1,6 +1,6 @@
 {
-  "name": "Mirrorbast",
-  "version": "1.0.0",
+  "name": "mirrorbast",
+  "version": "0.0.1",
   "description": "Mirrorbast app",
   "main": "main.js",
   "scripts": {
@@ -10,8 +10,8 @@
     "make": "electron-forge make"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Parker Mossman",
+  "license": "MIT",
   "type": "commonjs",
   "dependencies": {
     "electron-squirrel-startup": "^1.0.1",
