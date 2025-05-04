@@ -337,7 +337,7 @@ button.generic:disabled {
 }
 /* Primary Action Button Style */
 button.primary-action {
-  background-color: #777777;
+  background-color: #33a13c;
   color: #ffffff;
   padding: 10px 12px;
   font-size: 0.9em;
@@ -345,7 +345,7 @@ button.primary-action {
   margin-bottom: 15px;
 }
 button.primary-action:hover:not(:disabled) {
-  background-color: #888888;
+  background-color: #298135;
 }
 button.primary-action:active:not(:disabled) {
   background-color: #666666;

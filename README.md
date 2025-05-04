@@ -1,15 +1,22 @@
 # Mirrorbast
 
-Mirrorbast is a simple desktop application designed to wrap the web-based card game client Karabast, so that it can be played by a single player using two decks, with easy setup and switching between two decks for testing purposes.
+Mirrorbast is a simple desktop application designed to wrap the web-based card game client Karabast so that it can be played by a single player using two decks, with easy setup and switching between both sides of the table for deck-testing purposes.
 
-This application was built using Electron.
+## How to Use
+
+* When the Mirrorbast application starts, you'll see two inputs for SWUDB deck urls (one for each "player"). 
+* Enter the two decks that you want to test against eachother, and click "Auto Setup Game'. 
+* The app will automatically set up a private lobby with both decks. 
+  * This is automated and takes a few seconds, so sit back and let it do its thing. 
+  * Clicking stuff during this phase can break the automation and you'll have to reset.
+* Once finished, you can click the "Switch Active Player" button in the footer, or just hit spacebar, to toggle between the two "players" in order to play against yourself.
 
 ## ⚠️ Alpha Software - Expect Bugs! ⚠️
 
 **Please be aware:** This application is currently in an **alpha** stage.
 
-* It was developed rapidly over a couple of days, primarily using AI assistance ("vibe-coded").
-* While functional for basic use, it has undergone limited testing.
+I vibe coded this thing with AI over two days of paternity leave while taking care of a newborn, so keep your expectations reasonably low 😅
+
 * **Bugs are expected and likely.** Features might be incomplete or unstable.
 
 Use this software with the understanding that it's an early experiment. Feel free to report issues or contribute if you're interested!
@@ -66,6 +73,7 @@ Find the release corresponding to the version you want (usually the latest) and 
 4.  Once installed, you should find Mirrorbast in your application menu.
 
 ## Development
+This application is built using Electron.
 
 If you want to build or modify the application yourself:
 
