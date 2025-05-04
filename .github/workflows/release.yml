@@ -1,10 +1,9 @@
-# .github/workflows/release.yml
 name: Build & Release Electron App
 
 on:
   push:
     tags:
-      - "v*.*.*" # Trigger on version tags like v1.0.0
+      - "v*.*.*"
 
 jobs:
   build:
@@ -27,24 +26,22 @@ jobs:
         run: npm ci
 
       - name: Build application
-        run: npm run dist # Use electron-builder command
+        run: npm run dist
         env:
-          # WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: List build output # For debugging
-        run: ls -R dist # Check the new output directory
+      - name: List build output
+        run: ls -R dist
         shell: bash
         continue-on-error: true
 
-      # Upload OS-specific artifacts
       - name: Upload Windows Artifact (${{ matrix.os }})
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts-Windows
-          # Upload the entire dist folder for Windows to ensure installer and blockmap are available if needed later
-          # We will select the specific installer file in the release job
+
           path: dist/
           if-no-files-found: error
 
@@ -53,7 +50,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts-macOS
-          path: dist/**/*.zip # Look in 'dist' for ZIP
+          path: dist/**/*.zip
           if-no-files-found: error
 
       - name: Upload Linux Artifact (${{ matrix.os }})
@@ -61,7 +58,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts-Linux
-          path: dist/**/*.deb # Look in 'dist' for DEB
+          path: dist/**/*.deb
           if-no-files-found: error
 
   release:
@@ -69,18 +66,17 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write # Required to create releases/upload assets
+      contents: write
 
     steps:
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts # Download all artifacts into an 'artifacts' directory
+          path: artifacts
 
       - name: List downloaded files (for debugging)
         run: find artifacts -type f
 
-      # Using simpler release action
       - name: Create GitHub Release and Upload Assets
         uses: softprops/action-gh-release@v1
         with:
@@ -88,12 +84,10 @@ jobs:
           name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
-          # --- Refined glob patterns ---
-          # Target only the desired final distributable files
           files: |
-            artifacts/build-artifacts-Windows/**/*Setup*.exe # Only upload the NSIS Setup executable
+            artifacts/build-artifacts-Windows/Mirrorbast Setup *.exe
             artifacts/build-artifacts-macOS/**/*.zip
             artifacts/build-artifacts-Linux/**/*.deb
-          # --- End Refined Patterns ---
+
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
