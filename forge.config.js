@@ -5,7 +5,6 @@ module.exports = {
   packagerConfig: {
     asar: true,
     icon: 'assets/mirrorbast-icon', // Base name for icons
-    osxSign: {},
   },
   rebuildConfig: {},
   makers: [
