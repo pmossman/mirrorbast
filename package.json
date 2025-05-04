@@ -44,7 +44,8 @@
     "linux": {
       "target": "deb",
       "icon": "assets/mirrorbast-icon.png",
-      "category": "Game"
+      "category": "Game",
+      "maintainer": "Parker Mossman parkermos@gmail.com"
     },
     "nsis": {
       "oneClick": false,
