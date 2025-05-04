@@ -15,7 +15,7 @@ module.exports = {
     asar: true,
     icon: "assets/mirrorbast-icon", // Base name (without extension)
     /** 🔑  Ad‑hoc signing on macOS, nothing on other platforms */
-    osxSign: { identity: null },
+    osxSign: { identity: '-' },
     // No osxNotarize block – we are intentionally *not* notarising
   },
 
