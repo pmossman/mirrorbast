@@ -1,33 +1,63 @@
-const { FusesPlugin } = require('@electron-forge/plugin-fuses');
-const { FuseV1Options, FuseVersion } = require('@electron/fuses');
+// forge.config.js
+const { FusesPlugin } = require("@electron-forge/plugin-fuses");
+const { FuseV1Options, FuseVersion } = require("@electron/fuses");
 
 module.exports = {
+  /** -----------------------------------------------------------
+   *  Packaging options
+   *  -----------------------------------------------------------
+   *  Setting `identity: null` forces an ad‑hoc signature on macOS.
+   *  After the FusesPlugin mutates the Electron binary, Electron‑Forge
+   *  will re‑sign the bundle so Gatekeeper sees a valid signature.
+   *  (No Apple Developer account or certificates are required.)
+   */
   packagerConfig: {
     asar: true,
-    icon: 'assets/mirrorbast-icon', // Base name for icons
+    icon: "assets/mirrorbast-icon", // Base name (without extension)
+    /** 🔑  Ad‑hoc signing on macOS, nothing on other platforms */
+    osxSign: { identity: null },
+    // No osxNotarize block – we are intentionally *not* notarising
   },
+
+  /** -----------------------------------------------------------
+   *  Rebuild config (native modules)
+   *  ---------------------------------------------------------- */
   rebuildConfig: {},
+
+  /** -----------------------------------------------------------
+   *  Makers – one per target platform
+   *  ---------------------------------------------------------- */
   makers: [
+    // Windows (Squirrel)
     {
-      name: '@electron-forge/maker-squirrel',
-      config: {}, // Windows specific config (including signing) goes here
+      name: "@electron-forge/maker-squirrel",
+      config: {}, // Add signing options here if you later need them
     },
+    // macOS – we ship a ZIP, which GitHub Actions then zips again
     {
-      name: '@electron-forge/maker-zip',
-      platforms: ['darwin'] // Specify target platform
+      name: "@electron-forge/maker-zip",
+      platforms: ["darwin"],
     },
+    // Ubuntu / Debian
     {
-      name: '@electron-forge/maker-deb',
+      name: "@electron-forge/maker-deb",
       config: {
-        options: { icon: 'assets/mirrorbast-icon.png' } 
+        options: { icon: "assets/mirrorbast-icon.png" },
       },
     },
   ],
+
+  /** -----------------------------------------------------------
+   *  Plugins
+   *  ---------------------------------------------------------- */
   plugins: [
+    // Automatically unpack native add‑ons from ASAR at runtime
     {
-      name: '@electron-forge/plugin-auto-unpack-natives',
+      name: "@electron-forge/plugin-auto-unpack-natives",
       config: {},
     },
+
+    // Harden the Electron binary with fuse settings
     new FusesPlugin({
       version: FuseVersion.V1,
       [FuseV1Options.RunAsNode]: false,
