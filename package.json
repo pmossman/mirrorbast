@@ -28,28 +28,5 @@
     "@electron-forge/plugin-fuses": "^7.8.0",
     "@electron/fuses": "^1.8.0",
     "electron": "^36.1.0"
-  },
-  "config": {
-    "forge": {
-      "packagerConfig": {
-        "icon": "assets/mirrorbast-icon"
-      },
-      "makers": [
-        {
-          "name": "@electron-forge/maker-squirrel",
-          "config": {}
-        },
-        {
-          "name": "@electron-forge/maker-zip",
-          "platforms": [
-            "darwin"
-          ]
-        },
-        {
-          "name": "@electron-forge/maker-deb",
-          "config": {}
-        }
-      ]
-    }
   }
 }
