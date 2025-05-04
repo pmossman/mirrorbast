@@ -30,7 +30,7 @@ The easiest way to install Mirrorbast is to download the latest release for your
 Find the release corresponding to the version you want (usually the latest) and download the appropriate file for your system:
 
 * **Windows:** Download the `.exe` file (e.g., `mirrorbast-vX.Y.Z-windows-x64.exe`).
-* **macOS:** Download the `.dmg` file (e.g., `mirrorbast-vX.Y.Z-macos-arm64.dmg`). *(Note: Filename might vary slightly based on architecture)*.
+* **macOS:** Download the `.zip` file (e.g., `mirrorbast-vX.Y.Z-macos-arm64.zip`). *(Note: Filename might vary slightly based on architecture)*.
 * **Linux (Debian/Ubuntu):** Download the `.deb` file (e.g., `mirrorbast-vX.Y.Z-linux-amd64.deb`).
 
 ### Running the Application
@@ -46,16 +46,14 @@ Find the release corresponding to the version you want (usually the latest) and 
 
 #### macOS
 
-1.  Download the `mirrorbast-vX.Y.Z-macos-arm64.dmg` file.
-2.  Double-click the downloaded `.dmg` file to open it.
-3.  A window will appear showing the Mirrorbast application icon and usually a shortcut to your Applications folder.
-4.  **Drag the Mirrorbast icon into the Applications folder.**
-5.  **First Launch:** You might encounter a Gatekeeper warning ("Mirrorbast can't be opened because it is from an unidentified developer" or similar) because the app isn't notarized by Apple.
+1.  Download the `mirrorbast-vX.Y.Z-macos-arm64.zip` file.
+2.  Double-click the downloaded `.zip` file to extract the `Mirrorbast.app` application bundle (usually extracts to the same folder, e.g., Downloads).
+3.  **Drag the `Mirrorbast.app` icon into your Applications folder.**
+4.  **First Launch (Gatekeeper Bypass):** macOS Gatekeeper will likely prevent the app from opening initially because it's from an unidentified developer and hasn't been notarized by Apple. You will probably see a warning like ""Mirrorbast" can't be opened because it is from an unidentified developer".
     * **Right-click** (or Control-click) the Mirrorbast application icon in your Applications folder.
     * Select **"Open"** from the context menu.
-    * You might see the same warning again, but this time there will be an **"Open"** button. Click it.
-    * You should only need to do this the first time you run this specific version.
-6.  Eject the `.dmg` volume from your Finder sidebar when done.
+    * You might see the same warning again, but this time there should be an **"Open"** button. Click it.
+    * You should only need to do this the first time you run this specific version. *(The "damaged" error and the `xattr` command should no longer be necessary with the ZIP distribution).*
 
 #### Linux (Debian/Ubuntu)
 
@@ -75,7 +73,6 @@ Find the release corresponding to the version you want (usually the latest) and 
 4.  Once installed, you should find Mirrorbast in your application menu.
 
 ## Development
-This application is built using Electron.
 
 If you want to build or modify the application yourself:
 

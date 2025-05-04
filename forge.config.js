@@ -5,7 +5,7 @@ module.exports = {
   packagerConfig: {
     asar: true,
     icon: 'assets/mirrorbast-icon', // Base name for icons
-    osxSign: {} // empty object for default signing
+    osxSign: {},
   },
   rebuildConfig: {},
   makers: [
@@ -14,16 +14,13 @@ module.exports = {
       config: {}, // Windows specific config (including signing) goes here
     },
     {
-      name: '@electron-forge/maker-dmg',
-      config: {
-        icon: 'assets/mirrorbast-icon.icns', // Specific icon for DMG
-        format: 'ULFO'
-      },
+      name: '@electron-forge/maker-zip',
+      platforms: ['darwin'] // Specify target platform
     },
     {
       name: '@electron-forge/maker-deb',
       config: {
-        options: { icon: 'assets/mirrorbast-icon.png' }, // Specific icon for DEB
+        options: { icon: 'assets/mirrorbast-icon.png' } 
       },
     },
   ],
