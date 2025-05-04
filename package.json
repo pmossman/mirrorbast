@@ -1,32 +1,54 @@
 {
   "name": "mirrorbast",
-  "version": "0.0.13",
+  "version": "0.0.10",
   "description": "Mirrorbast app",
   "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "electron-forge start",
-    "package": "electron-forge package",
-    "make": "electron-forge make"
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
   },
   "keywords": [],
   "author": "Parker Mossman",
   "license": "MIT",
   "type": "commonjs",
   "dependencies": {
-    "electron-squirrel-startup": "^1.0.1",
     "node-fetch": "^2.7.0"
   },
   "devDependencies": {
-    "@electron-forge/cli": "^7.8.0",
-    "@electron-forge/maker-deb": "^7.8.0",
-    "@electron-forge/maker-dmg": "^7.8.0",
-    "@electron-forge/maker-rpm": "^7.8.0",
-    "@electron-forge/maker-squirrel": "^7.8.0",
-    "@electron-forge/maker-zip": "^7.8.0",
-    "@electron-forge/plugin-auto-unpack-natives": "^7.8.0",
-    "@electron-forge/plugin-fuses": "^7.8.0",
-    "@electron/fuses": "^1.8.0",
-    "electron": "^36.1.0"
+    "electron": "^36.1.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.electron.mirrorbast",
+    "productName": "Mirrorbast",
+    "files": [
+      "**/*",
+      "!node_modules/.cache",
+      "!out${/*}"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/mirrorbast-icon.ico"
+    },
+    "mac": {
+      "target": "zip",
+      "icon": "assets/mirrorbast-icon.icns",
+      "category": "public.app-category.games"
+    },
+    "linux": {
+      "target": "deb",
+      "icon": "assets/mirrorbast-icon.png",
+      "category": "Game"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

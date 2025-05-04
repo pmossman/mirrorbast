@@ -26,25 +26,31 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # --- Changed build command ---
       - name: Build application
-        run: npm run make
+        run: npm run dist # Use electron-builder command
         env:
+          # Pass secrets for potential signing (Builder uses slightly different env vars sometimes)
           WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+          # CSC_LINK: ${{ secrets.CSC_LINK }} # For macOS signing with Builder
+          # CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }} # For macOS signing with Builder
+          # APPLE_ID: ${{ secrets.APPLE_ID }} # For notarization
+          # APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }} # For notarization (preferred)
+          # APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }} # For notarization (preferred)
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: List build output (macOS) # Keep for debugging if needed
-        if: runner.os == 'macOS'
-        run: ls -R out/make
+      - name: List build output # For debugging
+        run: ls -R dist # Check the new output directory
         shell: bash
         continue-on-error: true
 
-      # Upload OS-specific artifacts
+      # --- Changed artifact paths to 'dist' ---
       - name: Upload Windows Artifact (${{ matrix.os }})
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts-Windows
-          path: out/make/**/*.exe
+          path: dist/**/*.exe # Look in 'dist' for NSIS installer
           if-no-files-found: error
 
       - name: Upload macOS Artifact (${{ matrix.os }})
@@ -52,7 +58,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts-macOS
-          path: out/make/**/*.zip # Expecting ZIP for macOS
+          path: dist/**/*.zip # Look in 'dist' for ZIP
           if-no-files-found: error
 
       - name: Upload Linux Artifact (${{ matrix.os }})
@@ -60,7 +66,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts-Linux
-          path: out/make/**/*.deb
+          path: dist/**/*.deb # Look in 'dist' for DEB
           if-no-files-found: error
 
   release:
@@ -79,17 +85,15 @@ jobs:
       - name: List downloaded files (for debugging)
         run: find artifacts -type f
 
-      # --- Reverted to simpler release action (no renaming) ---
+      # Using simpler release action
       - name: Create GitHub Release and Upload Assets
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
-          # body: Optional release notes can go here
           draft: false
           prerelease: false
-          # Use glob patterns to find assets within the downloaded artifact subdirectories
-          # This uploads files with their original names from the build process
+          # --- Update glob patterns to search within 'dist' based artifact dirs ---
           files: |
             artifacts/build-artifacts-Windows/**/*.exe
             artifacts/build-artifacts-macOS/**/*.zip
