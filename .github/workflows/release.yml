@@ -1,129 +1,93 @@
 # .github/workflows/release.yml
 name: Build & Release Electron App
 
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push events but only for version tags (e.g., v1.0.0, v2.3.1)
   push:
     tags:
-      - "v*.*.*"
+      - "v*.*.*" # Trigger on version tags like v1.0.0
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This job builds the application for different platforms
   build:
-    # Use a matrix strategy to run the job on multiple OSes
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
-    # The type of runner that the job will run on based on the matrix OS
     runs-on: ${{ matrix.os }}
 
     steps:
-      # 1. Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Sets up Node.js environment
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20" # Use a Node.js version compatible with your Electron version
-          cache: "npm" # Enable caching for npm dependencies
+          node-version: "20"
+          cache: "npm"
 
-      # 3. Install dependencies
-      # Using 'npm ci' is generally recommended in CI for faster, reliable installs
       - name: Install dependencies
         run: npm ci
 
-      # 4. Build the application using Electron Forge
-      # This command reads your package.json config and builds for the current OS
       - name: Build application
         run: npm run make
         env:
-          # Optional: Required for macOS code signing/notarization if set up
-          # CSC_LINK: ${{ secrets.CSC_LINK }}
-          # CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          # Pass necessary secrets if configured (e.g., for signing)
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
           # APPLE_ID: ${{ secrets.APPLE_ID }}
           # APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed for some makers/publishers
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # --- MODIFICATION START ---
-      # 5. Upload Artifacts for the Release (Conditional based on OS)
-      # Only upload the artifact type relevant to the current build OS runner.
-
+      # Upload OS-specific artifacts
       - name: Upload Windows Artifact (${{ matrix.os }})
-        if: runner.os == 'Windows' # Only run this step on Windows runners
+        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: build-artifacts-Windows # Consistent artifact name for Windows build
+          name: build-artifacts-Windows
           path: out/make/**/*.exe
-          if-no-files-found: error # Expect an .exe on Windows
+          if-no-files-found: error
 
       - name: Upload macOS Artifact (${{ matrix.os }})
-        if: runner.os == 'macOS' # Only run this step on macOS runners
+        if: runner.os == 'macOS'
         uses: actions/upload-artifact@v4
         with:
-          name: build-artifacts-macOS # Consistent artifact name for macOS build
-          path: out/make/**/*.zip # Assuming you use maker-zip for macOS
-          # If using maker-dmg, change path to: out/make/**/*.dmg
-          if-no-files-found: error # Expect a .zip (or .dmg) on macOS
+          name: build-artifacts-macOS
+          path: out/make/**/*.dmg # Expecting DMG for macOS
+          if-no-files-found: error
 
       - name: Upload Linux Artifact (${{ matrix.os }})
-        if: runner.os == 'Linux' # Only run this step on Linux runners
+        if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
-          name: build-artifacts-Linux # Consistent artifact name for Linux build
+          name: build-artifacts-Linux
           path: out/make/**/*.deb
-          if-no-files-found: error # Expect a .deb on Linux
-      # --- MODIFICATION END ---
+          if-no-files-found: error
 
-  # This job creates a GitHub Release and uploads the built artifacts from the 'build' job
   release:
-    # This job depends on the 'build' job completing successfully for all OSes
     needs: build
-    runs-on: ubuntu-latest # Can run on any OS, Ubuntu is common/cheap
+    runs-on: ubuntu-latest
 
     permissions:
-      contents: write # Needed to create releases and upload assets
+      contents: write # Required to create releases/upload assets
 
     steps:
-      # 1. Download all build artifacts from the previous job
-      # Artifacts from different OS builds will be downloaded into separate directories
-      # named after the artifact name (e.g., artifacts/build-artifacts-Windows)
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts # Download all artifacts into an 'artifacts' directory
+          path: artifacts
 
-      # 2. List downloaded files (for debugging)
-      - name: List downloaded files
+      - name: List downloaded files (for debugging)
         run: find artifacts -type f
 
-      # 3. Create GitHub Release and Upload Assets
-      # Using softprops/action-gh-release which handles creating the release
-      # and uploading assets specified by a glob pattern in one step.
       - name: Create GitHub Release and Upload Assets
         uses: softprops/action-gh-release@v1
         with:
-          # Drafts a release pointing to the triggering tag
           tag_name: ${{ github.ref_name }}
-          # Uses the tag name as the release name
           name: Release ${{ github.ref_name }}
-          # Optional: Add release notes here
-          # body: |
-          #  Automated release for ${{ github.ref_name }}
+          # body: Optional release notes can go here
           draft: false
           prerelease: false
-          # --- MODIFICATION START ---
-          # Update glob patterns to search within the specific artifact directories created by the download step
-          files: |
+          files: | # Glob patterns for assets to upload
             artifacts/build-artifacts-Windows/**/*.exe
-            artifacts/build-artifacts-macOS/**/*.zip # Adjust if using .dmg
+            artifacts/build-artifacts-macOS/**/*.dmg
             artifacts/build-artifacts-Linux/**/*.deb
-          # --- MODIFICATION END ---
         env:
-          # The GITHUB_TOKEN is automatically provided by GitHub Actions
-          # and is required by the action to interact with your repository
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
