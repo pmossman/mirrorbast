@@ -1,6 +1,6 @@
 {
   "name": "mirrorbast",
-  "version": "0.0.19",
+  "version": "0.0.20",
   "description": "Mirrorbast app",
   "main": "main.js",
   "scripts": {
@@ -41,7 +41,9 @@
       "target": "zip",
       "icon": "assets/mirrorbast-icon.icns",
       "category": "public.app-category.games",
-      "extraDistFiles": ["fix_mirrorbast_permissions.command"]
+      "extraDistFiles": [
+        "fix_mirrorbast_permissions.command"
+      ]
     },
     "linux": {
       "target": "deb",
