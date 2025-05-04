@@ -51,10 +51,10 @@ Find the release corresponding to the version you want (usually the latest) and 
 #### macOS
 
 1.  Download the `mirrorbast-vX.Y.Z-macos-arm64.zip` file.
-2.  Double-click the downloaded `.zip` file to extract its contents. You should see `Mirrorbast.app` and a script file named `Fix Mirrorbast Permissions.command`.
-3.  **Drag *both* `Mirrorbast.app` and `Fix Mirrorbast Permissions.command` into your Applications folder.** (Keeping them together is important for the script to work).
+2.  Double-click the downloaded `.zip` file to extract its contents. You should see `Mirrorbast.app` and a script file named `fix_mirrorbast_permissions.command`.
+3.  **Drag *both* `Mirrorbast.app` and `fix_mirrorbast_permissions.command` into your Applications folder.** (Keeping them together is important for the script to work).
 4.  **Run the Fix Script:** Due to macOS Gatekeeper security settings, you will likely see an error message saying **""Mirrorbast" is damaged and can’t be opened..."** if you try to run the app directly. To fix this:
-    * **Double-click the `Fix Mirrorbast Permissions.command` file** inside your Applications folder.
+    * **Double-click the `fix_mirrorbast_permissions.command` file** inside your Applications folder.
     * macOS may warn you that this is a script downloaded from the internet. Click **"Open"** if prompted.
     * A Terminal window will open and run the command. It should print "Permissions potentially fixed!". Press Enter to close the Terminal window when it's done.
     * *(Troubleshooting: If double-clicking the `.command` file doesn't work or gives an error, you might need to right-click it, select "Open With", choose "Terminal.app", and then click "Open" on the warning dialog.)*
