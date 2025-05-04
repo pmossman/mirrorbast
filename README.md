@@ -51,15 +51,16 @@ Find the release corresponding to the version you want (usually the latest) and 
 #### macOS
 
 1.  Download the `mirrorbast-vX.Y.Z-macos-arm64.zip` file.
-2.  Double-click the downloaded `.zip` file to extract its contents. You should see `Mirrorbast.app` and a script file named `fix_mirrorbast_permissions.command`.
-3.  **Drag *both* `Mirrorbast.app` and `fix_mirrorbast_permissions.command` into your Applications folder.** (Keeping them together is important for the script to work).
-4.  **Run the Fix Script:** Due to macOS Gatekeeper security settings, you will likely see an error message saying **""Mirrorbast" is damaged and can’t be opened..."** if you try to run the app directly. To fix this:
-    * **Double-click the `fix_mirrorbast_permissions.command` file** inside your Applications folder.
-    * macOS may warn you that this is a script downloaded from the internet. Click **"Open"** if prompted.
-    * A Terminal window will open and run the command. It should print "Permissions potentially fixed!". Press Enter to close the Terminal window when it's done.
-    * *(Troubleshooting: If double-clicking the `.command` file doesn't work or gives an error, you might need to right-click it, select "Open With", choose "Terminal.app", and then click "Open" on the warning dialog.)*
-5.  **Launch Mirrorbast:** After running the fix script successfully, you should be able to double-click `Mirrorbast.app` to open it.
-    * **Note:** You *might* still need to perform the standard **right-click -> Open** procedure the very first time you launch the app after running the fix script if you see an "unidentified developer" warning.
+2.  Double-click the downloaded `.zip` file to extract the `Mirrorbast.app` application bundle (usually extracts to the same folder, e.g., Downloads).
+3.  **Drag the `Mirrorbast.app` icon into your Applications folder.**
+4.  **Important macOS Workaround:** Due to macOS Gatekeeper security settings for applications downloaded from the internet that aren't signed by a recognized Apple Developer, you will likely encounter an error message saying **""Mirrorbast" is damaged and can’t be opened. You should move it to the Trash."** To fix this, you need to manually remove the quarantine attribute using the Terminal:
+    * Open the **Terminal** app (you can find it in Applications > Utilities, or search via Spotlight).
+    * Copy and paste the following command **exactly** and press Enter:
+      ```bash
+      xattr -cr /Applications/Mirrorbast.app
+      ```
+    * This command removes the quarantine attributes. After running it, you should be able to double-click the Mirrorbast app in your Applications folder to open it.
+    * **Note:** You *might* still need to perform the standard **right-click -> Open** procedure the very first time you launch the app after running the `xattr` command if you see an "unidentified developer" warning.
 
 #### Linux (Debian/Ubuntu)
 
