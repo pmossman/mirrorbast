@@ -302,13 +302,15 @@ ipcMain.handle("fetch-metadata", async (_, url) => {
   }
 });
 
-ipcMain.on("switch-player", () => {
+ipcMain.on("switch-player", async () => {
   /* ... switch logic ... */
   if (!gameViewsVisible)
     return console.log("Switch player ignored: Game views not visible.");
+
   const nextViewNum = currentView === 1 ? 2 : 1;
   console.log(`Switching player from ${currentView} to ${nextViewNum}`);
   const activeView = nextViewNum === 1 ? view1 : view2;
+  const inactiveView = nextViewNum === 1 ? view2 : view1;
   if (
     mainWindow &&
     activeView?.webContents &&
@@ -319,6 +321,16 @@ ipcMain.on("switch-player", () => {
     resizeView(activeView);
     resizeView(nextViewNum === 1 ? view2 : view1);
     const wc = getMainWindowWebContents();
+
+    // briefly deactivate and reactivate to fix mouse hover events
+    mainWindow.removeBrowserView(activeView);
+    mainWindow.setBrowserView(inactiveView);
+    await delay(30);
+    mainWindow.addBrowserView(activeView)
+    mainWindow.setBrowserView(activeView);
+    resizeView(activeView);
+    activeView.webContents.focus();
+
     if (wc) {
       wc.send("player-switched", nextViewNum);
     }
