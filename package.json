@@ -40,7 +40,8 @@
     "mac": {
       "target": "zip",
       "icon": "assets/mirrorbast-icon.icns",
-      "category": "public.app-category.games"
+      "category": "public.app-category.games",
+      "identity": null
     },
     "linux": {
       "target": "deb",
