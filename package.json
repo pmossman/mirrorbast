@@ -1,6 +1,6 @@
 {
   "name": "mirrorbast",
-  "version": "0.0.1",
+  "version": "0.0.4",
   "description": "Mirrorbast app",
   "main": "main.js",
   "scripts": {
