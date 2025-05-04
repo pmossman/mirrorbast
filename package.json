@@ -21,7 +21,7 @@
     "electron-builder": "^24.13.3"
   },
   "build": {
-    "publish": "never",
+    "publish": null,
     "appId": "com.electron.mirrorbast",
     "productName": "Mirrorbast",
     "files": [
