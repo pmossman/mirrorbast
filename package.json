@@ -43,7 +43,7 @@
     },
     "linux": {
       "target": "deb",
-      "icon": "assets/mirrorbast-icon.png",
+      "icon": "assets/mirrorbast-icon-256.png",
       "category": "Game",
       "maintainer": "Parker Mossman parkermos@gmail.com"
     },
