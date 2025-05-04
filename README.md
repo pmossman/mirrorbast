@@ -33,15 +33,17 @@ The easiest way to install Mirrorbast is to download the latest release for your
 
 Find the release corresponding to the version you want (usually the latest) and download the appropriate file for your system:
 
-* **Windows:** Download the `.exe` file (e.g., `mirrorbast-vX.Y.Z-windows-x64.exe`).
-* **macOS:** Download the `.zip` file (e.g., `mirrorbast-vX.Y.Z-macos-arm64.zip`). *(Note: Filename might vary slightly based on architecture)*.
-* **Linux (Debian/Ubuntu):** Download the `.deb` file (e.g., `mirrorbast-vX.Y.Z-linux-amd64.deb`).
+* **Windows:** Download the `.exe` file (e.g., `Mirrorbast.Setup.X.Y.Z.exe`).
+* **macOS:** Download the `.zip` file (e.g., `Mirrorbast-X.Y.Z-arm64-mac.zip`).
+* **Linux (Debian/Ubuntu):** Download the `.deb` file (e.g., `mirrorbast_X.Y.Z_amd64.deb`).
+
+*(Replace X.Y.Z with the actual version number from the release)*
 
 ### Running the Application
 
 #### Windows
 
-1.  Download the `mirrorbast-vX.Y.Z-windows-x64.exe` installer.
+1.  Download the `Mirrorbast.Setup.X.Y.Z.exe` installer.
 2.  Double-click the downloaded `.exe` file to run the installer.
 3.  **Important:** Windows Defender SmartScreen will likely show a warning ("Windows protected your PC") because the application is not code-signed by a recognized publisher.
     * Click **"More info"**.
@@ -50,7 +52,7 @@ Find the release corresponding to the version you want (usually the latest) and 
 
 #### macOS
 
-1.  Download the `mirrorbast-vX.Y.Z-macos-arm64.zip` file.
+1.  Download the `Mirrorbast-X.Y.Z-arm64-mac.zip` file.
 2.  Double-click the downloaded `.zip` file to extract the `Mirrorbast.app` application bundle (usually extracts to the same folder, e.g., Downloads).
 3.  **Drag the `Mirrorbast.app` icon into your Applications folder.**
 4.  **Important macOS Workaround:** Due to macOS Gatekeeper security settings for applications downloaded from the internet that aren't signed by a recognized Apple Developer, you will likely encounter an error message saying **""Mirrorbast" is damaged and can’t be opened. You should move it to the Trash."** To fix this, you need to manually remove the quarantine attribute using the Terminal:
@@ -64,15 +66,15 @@ Find the release corresponding to the version you want (usually the latest) and 
 
 #### Linux (Debian/Ubuntu)
 
-1.  Download the `mirrorbast-vX.Y.Z-linux-amd64.deb` file.
+1.  Download the `mirrorbast_X.Y.Z_amd64.deb` file.
 2.  You can usually install `.deb` files by double-clicking them in your file manager, which should open a package installer (like Ubuntu Software or GDebi).
 3.  Alternatively, you can install it from the terminal:
     ```bash
     # Navigate to the directory where you downloaded the file
     cd ~/Downloads 
     
-    # Install the package (replace vX.Y.Z with the actual version)
-    sudo dpkg -i mirrorbast-vX.Y.Z-linux-amd64.deb
+    # Install the package (replace X.Y.Z with the actual version)
+    sudo dpkg -i mirrorbast_X.Y.Z_amd64.deb
     
     # If you encounter dependency issues, run:
     sudo apt-get install -f 
